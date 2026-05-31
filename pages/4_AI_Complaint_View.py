@@ -1,5 +1,6 @@
 import streamlit as st
-import time, random
+import requests
+import time
 from datetime import datetime
 
 st.set_page_config(page_title="AI Complaint View · CivicAssist AI", page_icon="🤖", layout="wide")
@@ -50,41 +51,53 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 # ── Demo input or use a pre-loaded example ────────────────────────────────────
-SAMPLE_COMPLAINTS = {
-    "Pothole on MG Road":
-        ("There is a massive pothole on MG Road near the Anil Kumble Circle, Bengaluru. The pothole is approximately 3 feet wide and 6 inches deep. It has been present for over 3 weeks, causing accidents daily. Two-wheelers have skidded. This needs urgent attention.",
-         "MG Road, Near Anil Kumble Circle, Bengaluru - 560001",
-         "Rajesh Kumar", "9876543210"),
-    "Broken Streetlight, Koramangala":
-        ("The streetlight on 4th Cross, Koramangala 5th Block has been non-functional for over 10 days. The area becomes completely dark after 7 PM. It's a safety hazard, especially for women and elderly residents.",
-         "4th Cross, Koramangala 5th Block, Bengaluru - 560034",
-         "Priya Sharma", "9988776655"),
-    "Garbage Dump, HSR Layout":
-        ("An unauthorized garbage dump has appeared near the park on 27th Main, HSR Layout Sector 1. The dump is growing daily and emits foul odour. Stray animals are scavenging. Residents' health is at risk.",
-         "27th Main, HSR Layout Sector 1, Bengaluru - 560102",
-         "Mohammed Ali", "9123456789"),
-}
+@st.cache_data(ttl=10)
+def load_complaints():
 
-col_input, col_meta = st.columns([2,1])
+    try:
 
-with col_input:
-    example = st.selectbox("📂 Load Example Complaint", ["— Custom Input —"] + list(SAMPLE_COMPLAINTS.keys()))
+        response = requests.get(
+            "http://127.0.0.1:8000/api/complaints/"
+        )
 
-with col_meta:
-    if example != "— Custom Input —":
-        _, loc, name, phone = SAMPLE_COMPLAINTS[example]
-        st.markdown(f"<div style='font-size:.82rem;color:#64748B;padding-top:.3rem;'>📍 {loc}<br>👤 {name}</div>", unsafe_allow_html=True)
+        if response.status_code == 200:
+            return response.json()
 
-if example != "— Custom Input —":
-    complaint_text, location, citizen_name, phone = SAMPLE_COMPLAINTS[example]
-else:
-    col_a, col_b = st.columns(2)
-    with col_a:
-        complaint_text = st.text_area("Your Complaint", height=100, placeholder="Describe your civic issue...")
-        location       = st.text_input("Location", placeholder="Full address")
-    with col_b:
-        citizen_name = st.text_input("Your Name")
-        phone        = st.text_input("Phone/Email")
+        return []
+
+    except:
+        return []
+
+complaints = load_complaints()
+
+if not complaints:
+
+    st.warning(
+        "No complaints available. Submit a complaint first."
+    )
+
+    st.stop()
+
+selected_id = st.selectbox(
+    "📂 Select Complaint",
+    [c["complaint_id"] for c in complaints]
+)
+
+selected_complaint = next(
+    (
+        c for c in complaints
+        if c["complaint_id"] == selected_id
+    ),
+    None
+)
+
+complaint_text = selected_complaint["complaint_text"]
+
+location = selected_complaint["location"]
+
+citizen_name = selected_complaint["citizen_name"]
+
+phone = selected_complaint["phone"]
 
 generate_btn = st.button("🤖 Generate AI Complaint Letter", type="primary")
 
@@ -145,19 +158,22 @@ if "generated_letter" not in st.session_state:
     st.session_state.generated_letter = None
     st.session_state.generated_cid    = None
 
-if generate_btn and complaint_text.strip():
-    with st.spinner("🤖 AI is generating your formal complaint letter..."):
-        time.sleep(2)
-    cid = f"CA-2025-{random.randint(1100,9999)}"
-    today = datetime.now().strftime("%d %B %Y")
-    letter = generate_letter(complaint_text, location, citizen_name or "Concerned Citizen", cid, today)
-    st.session_state.generated_letter = letter
-    st.session_state.generated_cid    = cid
+if selected_complaint:
+
+    st.session_state.generated_letter = (
+        selected_complaint["generated_letter"]
+    )
+
+    st.session_state.generated_cid = (
+        selected_complaint["complaint_id"]
+    )
 
 if st.session_state.generated_letter:
     letter = st.session_state.generated_letter
     cid    = st.session_state.generated_cid
-    addressee, priority, category = get_dept_and_priority(complaint_text)
+    priority = selected_complaint["priority"]
+    category = selected_complaint["issue_category"]
+    addressee = selected_complaint["department"]
     p_cls  = {"High":"badge-high","Medium":"badge-medium","Low":"badge-low"}[priority]
     today  = datetime.now().strftime("%d %B %Y")
 
@@ -190,7 +206,7 @@ if st.session_state.generated_letter:
     if email_btn:
         with st.spinner("📧 Dispatching to government email..."):
             time.sleep(1.5)
-        st.markdown(f'<div class="notif-success">📧 Email dispatched to <strong>complaints@bbmp.gov.in</strong>. Reference: <strong>{cid}</strong></div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="notif-success">📧 Email dispatched to <strong>{selected_complaint["department_email"]}</strong>. Reference: <strong>{cid}</strong></div>', unsafe_allow_html=True)
     if new_btn:
         st.session_state.generated_letter = None
         st.rerun()

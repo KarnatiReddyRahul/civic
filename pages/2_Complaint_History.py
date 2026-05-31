@@ -1,7 +1,6 @@
+import pandas as pd
+import requests
 import streamlit as st
-import pandas as pd, numpy as np, random
-from datetime import datetime, timedelta
-
 st.set_page_config(page_title="Complaint History · CivicAssist AI", page_icon="📋", layout="wide")
 
 st.markdown("""
@@ -36,31 +35,85 @@ with st.sidebar:
     st.page_link("pages/4_AI_Complaint_View.py",    label="🤖  AI Complaint View")
 
 # ── Sample data ────────────────────────────────────────────────────────────────
-@st.cache_data
+@st.cache_data(ttl=10)
 def get_data():
-    random.seed(42); np.random.seed(42)
-    cats = ["Pothole","Broken Streetlight","Garbage Dump","Water Leakage","Drainage Issue","Road Damage","Encroachment","Noise Pollution"]
-    depts = {"Pothole":"Roads & Transport","Broken Streetlight":"Electricity Dept","Garbage Dump":"Sanitation","Water Leakage":"Water Works","Drainage Issue":"Drainage Dept","Road Damage":"Roads & Transport","Encroachment":"Revenue Dept","Noise Pollution":"Police Dept"}
-    statuses = ["Submitted","Assigned","In Progress","Resolved"]
-    priorities = ["High","Medium","Low"]
-    locs = ["Koramangala","Indiranagar","Whitefield","HSR Layout","Jayanagar","Malleswaram","Hebbal","Electronic City","BTM Layout","Marathahalli"]
-    rows = []
-    base = datetime.now() - timedelta(days=90)
-    for i in range(120):
-        cat = random.choice(cats)
-        rows.append({
-            "Complaint ID": f"CA-2025-{1000+i:04d}",
-            "Category": cat,
-            "Department": depts[cat],
-            "Location": random.choice(locs),
-            "Priority": random.choices(priorities, weights=[25,50,25])[0],
-            "Status": random.choices(statuses, weights=[15,20,30,35])[0],
-            "Submitted": (base + timedelta(days=random.randint(0,90))).strftime("%d %b %Y"),
-            "Description": f"Reported issue regarding {cat.lower()} at {random.choice(locs)}.",
-        })
-    return pd.DataFrame(rows)
+
+    try:
+
+        response = requests.get(
+            "http://127.0.0.1:8000/api/complaints/"
+        )
+
+        if response.status_code != 200:
+            return pd.DataFrame()
+
+        complaints = response.json()
+
+        rows = []
+
+        for c in complaints:
+
+            rows.append({
+
+                "Complaint ID": c.get(
+                    "complaint_id",
+                    "N/A"
+                ),
+
+                "Category": c.get(
+                    "issue_category",
+                    "Unknown"
+                ),
+
+                "Department": c.get(
+                    "department",
+                    "Unknown"
+                ),
+
+                "Location": c.get(
+                    "location",
+                    "Unknown"
+                ),
+
+                "Priority": c.get(
+                    "priority",
+                    "Medium"
+                ),
+
+                "Status": c.get(
+                    "status",
+                    "Submitted"
+                ),
+
+                "Submitted": str(
+                    c.get(
+                        "created_at",
+                        ""
+                    )
+                )[:10],
+
+                "Description": c.get(
+                    "complaint_text",
+                    ""
+                )
+            })
+
+        return pd.DataFrame(rows)
+
+    except Exception as e:
+
+        st.error(
+            f"Backend Connection Error: {e}"
+        )
+
+        return pd.DataFrame()
 
 df = get_data()
+
+if df.empty:
+    st.warning(
+        "No complaints found. Submit a complaint first."
+    )
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown("""

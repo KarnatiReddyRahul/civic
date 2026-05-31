@@ -1,0 +1,22 @@
+{
+  "Pothole": {
+    "department": "Roads Department",
+    "email": "roads@demo.gov",
+    "priority": "High"
+  },
+  "Streetlight": {
+    "department": "Electricity Department",
+    "email": "electricity@demo.gov",
+    "priority": "Medium"
+  },
+  "Garbage": {
+    "department": "Sanitation Department",
+    "email": "sanitation@demo.gov",
+    "priority": "High"
+  },
+  "Water Leakage": {
+    "department": "Water Works Department",
+    "email": "water@demo.gov",
+    "priority": "High"
+  }
+}

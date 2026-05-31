@@ -1,6 +1,8 @@
 import streamlit as st
-import pandas as pd, numpy as np, random, plotly.express as px, plotly.graph_objects as go
-from datetime import datetime, timedelta
+import pandas as pd
+import requests
+import plotly.express as px
+import plotly.graph_objects as go
 
 st.set_page_config(page_title="Admin Dashboard · CivicAssist AI", page_icon="📊", layout="wide")
 
@@ -40,31 +42,25 @@ with st.sidebar:
     st.page_link("pages/3_Admin_Dashboard.py",      label="📊  Admin Dashboard")
     st.page_link("pages/4_AI_Complaint_View.py",    label="🤖  AI Complaint View")
 
-@st.cache_data
-def get_data():
-    random.seed(42); np.random.seed(42)
-    cats = ["Pothole","Broken Streetlight","Garbage Dump","Water Leakage","Drainage Issue","Road Damage","Encroachment","Noise Pollution"]
-    depts = {"Pothole":"Roads & Transport","Broken Streetlight":"Electricity Dept","Garbage Dump":"Sanitation","Water Leakage":"Water Works","Drainage Issue":"Drainage Dept","Road Damage":"Roads & Transport","Encroachment":"Revenue Dept","Noise Pollution":"Police Dept"}
-    statuses = ["Submitted","Assigned","In Progress","Resolved"]
-    priorities = ["High","Medium","Low"]
-    locs = ["Koramangala","Indiranagar","Whitefield","HSR Layout","Jayanagar","Malleswaram","Hebbal","Electronic City","BTM Layout","Marathahalli"]
-    rows = []
-    base = datetime.now() - timedelta(days=90)
-    for i in range(120):
-        cat = random.choice(cats)
-        rows.append({
-            "Complaint ID": f"CA-2025-{1000+i:04d}",
-            "Category": cat,
-            "Department": depts[cat],
-            "Location": random.choice(locs),
-            "Priority": random.choices(priorities, weights=[25,50,25])[0],
-            "Status": random.choices(statuses, weights=[15,20,30,35])[0],
-            "Date": base + timedelta(days=random.randint(0,90)),
-            "Resolve Days": random.randint(1,30),
-        })
-    return pd.DataFrame(rows)
+df = get_data()
+
+if df.empty:
+
+    st.warning(
+        "No complaints available."
+    )
+
+    st.stop()
 
 df = get_data()
+
+if df.empty:
+
+    st.warning(
+        "No complaints available."
+    )
+
+    st.stop()
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown("""

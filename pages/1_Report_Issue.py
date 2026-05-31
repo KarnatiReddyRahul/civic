@@ -1,5 +1,8 @@
 import streamlit as st
-import time, random
+import time
+import random
+import requests
+import requests
 from datetime import datetime
 
 st.set_page_config(page_title="Report Issue · CivicAssist AI", page_icon="📝", layout="wide")
@@ -180,14 +183,90 @@ with col_preview:
 
 # ── Notifications ──────────────────────────────────────────────────────────────
 if submit_btn:
-    if not complaint_text.strip() or not location.strip():
-        st.markdown('<div class="notif-error" style="margin-top:1rem;">⚠️ Please fill in your complaint description and location before submitting.</div>', unsafe_allow_html=True)
+
+    if not complaint_text.strip():
+        st.markdown(
+            '<div class="notif-error" style="margin-top:1rem;">⚠️ Please enter complaint details.</div>',
+            unsafe_allow_html=True
+        )
+
+    elif not location.strip():
+        st.markdown(
+            '<div class="notif-error" style="margin-top:1rem;">⚠️ Please enter location.</div>',
+            unsafe_allow_html=True
+        )
+
     else:
-        with st.spinner("🤖 AI is processing your complaint..."):
-            time.sleep(1.8)
-        cid = f"CA-2025-{random.randint(1100,9999)}"
-        st.markdown(f'<div class="notif-success" style="margin-top:1rem;">✅ Complaint <strong>{cid}</strong> submitted successfully! You will receive updates via SMS/email.</div>', unsafe_allow_html=True)
-        st.balloons()
+
+        try:
+
+            with st.spinner("🤖 Submitting complaint to CivicAssist AI..."):
+
+                response = requests.post(
+                    "http://127.0.0.1:8000/api/complaints/",
+                    json={
+                        "citizen_name": contact_name if contact_name else "Anonymous",
+                        "email": contact_phone if contact_phone else "user@example.com",
+                        "phone": contact_phone if contact_phone else "0000000000",
+                        "complaint_text": complaint_text,
+                        "location": location
+                    }
+                )
+
+            if response.status_code == 200:
+
+                data = response.json()
+
+                st.markdown(
+                    f'''
+                    <div class="notif-success" style="margin-top:1rem;">
+                    ✅ Complaint <strong>{data["complaint_id"]}</strong> submitted successfully!
+                    </div>
+                    ''',
+                    unsafe_allow_html=True
+                )
+
+                st.balloons()
+
+                st.markdown("### 📋 Complaint Details")
+
+                st.write(
+                    "**Complaint ID:**",
+                    data["complaint_id"]
+                )
+
+                st.write(
+                    "**Category:**",
+                    data["category"]
+                )
+
+                st.write(
+                    "**Department:**",
+                    data["department"]
+                )
+
+                st.write(
+                    "**Priority:**",
+                    data["priority"]
+                )
+
+                st.text_area(
+                    "Generated Complaint Letter",
+                    data["generated_letter"],
+                    height=250
+                )
+
+            else:
+
+                st.error(
+                    f"Backend Error: {response.text}"
+                )
+
+        except Exception as e:
+
+            st.error(
+                f"Connection Error: {str(e)}"
+            )
 
 if pdf_btn:
     with st.spinner("📄 Generating formal complaint PDF..."):
