@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual Environment
+venv/
+.env
+
+# VS Code
+.vscode/
+
+# Database
+*.db
+*.sqlite3
+
+# Generated Files
+generated_pdfs/
+backend/generated_pdfs/
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Streamlit
+.streamlit/
+
+# Logs
+*.log
+
+# Build Files
+dist/
+build/
+
+# Ruff Cache
+.ruff_cache/
+
+# Pyright
+.pyright/
+
+# GitLeaks
+.gitleaks-report.json

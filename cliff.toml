@@ -1,0 +1,27 @@
+[changelog]
+
+header = """
+# Changelog
+
+All notable changes to CivicAssist are documented here.
+"""
+
+body = """
+{% for group, commits in commits | group_by(attribute="group") %}
+## {{ group }}
+
+{% for commit in commits %}
+- {{ commit.message }}
+{% endfor %}
+
+{% endfor %}
+"""
+
+footer = """
+---
+Generated for CivicAssist
+"""
+
+[git]
+conventional_commits = true
+filter_unconventional = false
