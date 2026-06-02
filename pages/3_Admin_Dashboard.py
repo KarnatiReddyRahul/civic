@@ -1,8 +1,11 @@
 import streamlit as st
 import pandas as pd
+import numpy as np
 import requests
 import plotly.express as px
 import plotly.graph_objects as go
+from geopy.geocoders import Nominatim
+
 
 st.set_page_config(page_title="Admin Dashboard · CivicAssist AI", page_icon="📊", layout="wide")
 
@@ -42,24 +45,43 @@ with st.sidebar:
     st.page_link("pages/3_Admin_Dashboard.py",      label="📊  Admin Dashboard")
     st.page_link("pages/4_AI_Complaint_View.py",    label="🤖  AI Complaint View")
 
+# ── Sample data / backend fetch ─────────────────────────────────────────────────
+@st.cache_data(ttl=10)
+def get_data():
+    try:
+        response = requests.get("http://127.0.0.1:8000/api/complaints/")
+        if response.status_code != 200:
+            return pd.DataFrame()
+
+        complaints = response.json()
+        rows = []
+        for c in complaints:
+            rows.append({
+                "Complaint ID": c.get("complaint_id", "N/A"),
+                "Category": c.get("issue_category", "Unknown"),
+                "Department": c.get("department", "Unknown"),
+                "Location": c.get("location", "Unknown"),
+                "Priority": c.get("priority", "Medium"),
+                "Status": c.get("status", "Submitted"),
+                "Date": pd.to_datetime(c.get("created_at", ""), errors="coerce"),
+                "Submitted": str(c.get("created_at", ""))[:10],
+                "Resolve Days": None,
+                "Description": c.get("complaint_text", ""),
+            })
+
+        df = pd.DataFrame(rows)
+        if not df.empty and "Submitted" in df.columns:
+            df["Date"] = pd.to_datetime(df["Submitted"], errors="coerce")
+        return df
+
+    except Exception as e:
+        st.error(f"Backend connection error: {e}")
+        return pd.DataFrame()
+
 df = get_data()
 
 if df.empty:
-
-    st.warning(
-        "No complaints available."
-    )
-
-    st.stop()
-
-df = get_data()
-
-if df.empty:
-
-    st.warning(
-        "No complaints available."
-    )
-
+    st.warning("No complaints available.")
     st.stop()
 
 # ── Header ─────────────────────────────────────────────────────────────────────
@@ -87,7 +109,107 @@ stat_card(c3,"⏱️","Avg Resolve Time",   f"{avg_resolve:.1f}d","↓ 2.3 days 
 stat_card(c4,"🚨","High Priority Open",  high,     "Requires attention",     "#EF4444")
 
 st.markdown("<br>", unsafe_allow_html=True)
+API_BASE = "http://127.0.0.1:8000"
 
+st.subheader("🛠 Complaint Status Management")
+
+st.dataframe(
+    df[[
+        "Complaint ID",
+        "Category",
+        "Department",
+        "Location",
+        "Priority",
+        "Status"
+    ]],
+    use_container_width=True
+)
+
+complaint_id = st.selectbox(
+    "Select Complaint ID",
+    df["Complaint ID"].tolist()
+)
+selected_row = df[
+    df["Complaint ID"] == complaint_id
+]
+if not selected_row.empty:
+
+    st.info(
+        f"📍 Location: {selected_row.iloc[0]['Location']}"
+    )
+
+    st.info(
+        f"🏢 Department: {selected_row.iloc[0]['Department']}"
+    )
+
+    st.info(
+        f"⚡ Priority: {selected_row.iloc[0]['Priority']}"
+    )
+new_status = st.selectbox(
+    "Update Status",
+    [
+        "Submitted",
+        "Assigned",
+        "In Progress",
+        "Resolved",
+        "Rejected"
+    ]
+)
+
+if st.button("✅ Update Status"):
+
+    st.write(
+        f"Updating {complaint_id} → {new_status}"
+    )
+
+    try:
+
+        response = requests.put(
+            f"{API_BASE}/api/complaints/{complaint_id}/status",
+            json={
+                "status": new_status
+            }
+        )
+
+        st.write("Status Code:", response.status_code)
+        st.write("Response:", response.text)
+
+        if response.status_code == 200:
+
+            st.success(
+                f"Complaint {complaint_id} updated successfully!"
+            )
+
+            st.rerun()
+
+        else:
+
+            st.error(response.text)
+
+    except Exception as e:
+
+        st.error(str(e))
+def get_coordinates(location):
+
+    try:
+
+        geolocator = Nominatim(
+            user_agent="civicassist"
+        )
+
+        loc = geolocator.geocode(location)
+
+        if loc:
+
+            return (
+                loc.latitude,
+                loc.longitude
+            )
+
+    except:
+        pass
+
+    return None, None
 # ── Charts Row 1 ───────────────────────────────────────────────────────────────
 ch1, ch2 = st.columns([3,2])
 
@@ -106,7 +228,7 @@ with ch1:
         legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1),
         font=dict(family="DM Sans", size=11),
     )
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar":False})
+    st.plotly_chart(fig, width='stretch', config={"displayModeBar":False})
 
 with ch2:
     st.markdown('<div class="section-header">🏆 Top Issue Categories</div>', unsafe_allow_html=True)
@@ -125,7 +247,7 @@ with ch2:
         yaxis=dict(showgrid=False, zeroline=False),
         font=dict(family="DM Sans", size=11),
     )
-    st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar":False})
+    st.plotly_chart(fig2, width='stretch', config={"displayModeBar":False})
 
 # ── Charts Row 2 ───────────────────────────────────────────────────────────────
 ch3, ch4 = st.columns([2,3])
@@ -159,35 +281,48 @@ with ch4:
     st.markdown('<div class="section-header">📍 Complaint Hotspot Map</div>', unsafe_allow_html=True)
     # Bangalore coordinates for demo
     loc_coords = {
-        "Koramangala":  (12.9352, 77.6245),
-        "Indiranagar":  (12.9784, 77.6408),
-        "Whitefield":   (12.9698, 77.7500),
-        "HSR Layout":   (12.9116, 77.6389),
-        "Jayanagar":    (12.9308, 77.5838),
-        "Malleswaram":  (13.0035, 77.5700),
-        "Hebbal":       (13.0350, 77.5970),
-        "Electronic City":(12.8450, 77.6601),
-        "BTM Layout":   (12.9166, 77.6101),
-        "Marathahalli": (12.9591, 77.6974),
+    "Miyapur": (17.4948, 78.3915),
+    "Miyapur Metro Station": (17.4960, 78.3919),
+    "Gachibowli": (17.4401, 78.3489),
+    "Kukatpally": (17.4849, 78.4138),
+    "Hitech City": (17.4435, 78.3772),
+    "Madhapur": (17.4486, 78.3908),
+    "Ameerpet": (17.4375, 78.4483),
+    "Secunderabad": (17.4399, 78.4983),
+    "LB Nagar": (17.3457, 78.5520),
+    "Uppal": (17.4058, 78.5591),
+    "Banjara Hills": (17.4126, 78.4482),
+    "Jubilee Hills": (17.4326, 78.4071),
+
     }
-    map_df = df.groupby("Location").size().reset_index(name="Count")
-    map_df["lat"] = map_df["Location"].map(lambda x: loc_coords.get(x,(12.97,77.59))[0]) + np.random.normal(0,.005,len(map_df))
-    map_df["lon"] = map_df["Location"].map(lambda x: loc_coords.get(x,(12.97,77.59))[1]) + np.random.normal(0,.005,len(map_df))
+    selected_location = selected_row.iloc[0]["Location"]
+
+if selected_location in loc_coords:
+
+    lat, lon = loc_coords[selected_location]
+
+    map_df = pd.DataFrame({
+        "Location": [selected_location],
+        "lat": [lat],
+        "lon": [lon]
+    })
+    
 
     fig3 = px.scatter_mapbox(
-        map_df, lat="lat", lon="lon", size="Count",
-        color="Count", color_continuous_scale="Blues",
-        hover_name="Location", hover_data={"Count":True,"lat":False,"lon":False},
-        zoom=11, height=280,
-        mapbox_style="carto-positron",
-        size_max=35,
-    )
+    map_df,
+    lat="lat",
+    lon="lon",
+    hover_name="Location",
+    zoom=14,
+    height=350,
+    mapbox_style="carto-positron"
+)
     fig3.update_layout(
         margin=dict(l=0,r=0,t=0,b=0),
         coloraxis_showscale=False,
         font=dict(family="DM Sans"),
     )
-    st.plotly_chart(fig3, use_container_width=True, config={"displayModeBar":False})
+    st.plotly_chart(fig3, width='stretch', config={"displayModeBar":False})
 
 # ── Heatmap ────────────────────────────────────────────────────────────────────
 st.markdown('<div class="section-header">🔥 Complaint Heatmap — Category × Location</div>', unsafe_allow_html=True)
@@ -213,7 +348,7 @@ fig4.update_layout(
     yaxis=dict(tickfont=dict(size=10)),
     font=dict(family="DM Sans", size=11),
 )
-st.plotly_chart(fig4, use_container_width=True, config={"displayModeBar":False})
+st.plotly_chart(fig4, width='stretch', config={"displayModeBar":False})
 
 # ── Recent activity feed ────────────────────────────────────────────────────────
 st.markdown('<div class="section-header">⚡ Recent Activity</div>', unsafe_allow_html=True)

@@ -192,10 +192,10 @@ if st.session_state.generated_letter:
 
     # Action buttons
     ab1, ab2, ab3, ab4 = st.columns(4)
-    copy_btn  = ab1.button("📋 Copy Letter",     use_container_width=True)
-    pdf_btn   = ab2.button("📄 Download PDF",    use_container_width=True)
-    email_btn = ab3.button("📧 Dispatch Email",  use_container_width=True, type="primary")
-    new_btn   = ab4.button("🔄 New Letter",       use_container_width=True)
+    copy_btn  = ab1.button("📋 Copy Letter",     width='stretch')
+    pdf_btn   = ab2.button("📄 Download PDF",    width='stretch')
+    email_btn = ab3.button("📧 Dispatch Email",  width='stretch', type="primary")
+    new_btn   = ab4.button("🔄 New Letter",       width='stretch')
 
     if copy_btn:
         st.markdown('<div class="notif-success">✅ Letter content copied to clipboard!</div>', unsafe_allow_html=True)

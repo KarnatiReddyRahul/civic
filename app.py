@@ -1,4 +1,5 @@
 import streamlit as st
+import requests
 
 st.set_page_config(
     page_title="CivicAssist AI",
@@ -44,14 +45,65 @@ section[data-testid="stSidebar"] {
   background: var(--navy) !important;
   border-right: none !important;
 }
-section[data-testid="stSidebar"] * { color: #CBD5E1 !important; }
+
+section[data-testid="stSidebar"] * {
+  color: #CBD5E1 !important;
+}
+
 section[data-testid="stSidebar"] .sidebar-logo {
   padding: 1.5rem 1rem 1rem;
   border-bottom: 1px solid rgba(255,255,255,.1);
   margin-bottom: 1rem;
 }
+
 section[data-testid="stSidebar"] a {
+  display: block;
+  padding: .85rem 1rem;
+  margin: .18rem 0;
+  border-radius: 12px;
+  color: #CBD5E1 !important;
+  background: rgba(255,255,255,.04);
   text-decoration: none !important;
+}
+
+section[data-testid="stSidebar"] a:hover {
+  color: #fff !important;
+  background: rgba(255,255,255,.12);
+}
+
+section[data-testid="stSidebar"] a[aria-current="page"] {
+  color: #fff !important;
+  background: rgba(255,255,255,.16);
+}
+}
+.page-nav-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: .6rem;
+  justify-content: center;
+  margin: 1rem 0 1.6rem;
+}
+.page-nav-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 150px;
+  padding: .9rem 1.2rem;
+  border-radius: 999px;
+  background: rgba(255,255,255,.95);
+  color: #0A1628 !important;
+  text-decoration: none !important;
+  font-size: .95rem;
+  font-weight: 600;
+  border: 1px solid rgba(15,23,42,.08);
+}
+.page-nav-pill:hover {
+  background: #fff;
+}
+.page-nav-pill.active {
+  background: #e2e8f0;
+  color: #0A1628 !important;
+  border-color: rgba(15,23,42,.12);
 }
 /* active nav item highlight */
 section[data-testid="stSidebar"] [data-testid="stMarkdownContainer"] p {
@@ -278,36 +330,51 @@ with st.sidebar:
 # ── Shared data (cached) ───────────────────────────────────────────────────────
 import pandas as pd, numpy as np, plotly.graph_objects as go, plotly.express as px
 from datetime import datetime, timedelta
-import random
 
-@st.cache_data
-def get_sample_data():
-    random.seed(42); np.random.seed(42)
-    categories  = ["Pothole","Broken Streetlight","Garbage Dump","Water Leakage","Drainage Issue","Road Damage","Encroachment","Noise Pollution"]
-    departments = {"Pothole":"Roads & Transport","Broken Streetlight":"Electricity Dept","Garbage Dump":"Sanitation","Water Leakage":"Water Works","Drainage Issue":"Drainage Dept","Road Damage":"Roads & Transport","Encroachment":"Revenue Dept","Noise Pollution":"Police Dept"}
-    statuses    = ["Submitted","Assigned","In Progress","Resolved"]
-    priorities  = ["High","Medium","Low"]
-    locations   = ["Koramangala","Indiranagar","Whitefield","HSR Layout","Jayanagar","Malleswaram","Hebbal","Electronic City","BTM Layout","Marathahalli"]
-    rows = []
-    base = datetime.now() - timedelta(days=90)
-    for i in range(120):
-        cat  = random.choice(categories)
-        days = random.randint(0, 90)
-        rows.append({
-            "Complaint ID": f"CA-2025-{1000+i:04d}",
-            "Category":     cat,
-            "Department":   departments[cat],
-            "Location":     random.choice(locations),
-            "Priority":     random.choices(priorities, weights=[25,50,25])[0],
-            "Status":       random.choices(statuses,   weights=[15,20,30,35])[0],
-            "Submitted":    (base + timedelta(days=days)).strftime("%d %b %Y"),
-            "Citizen":      f"Citizen {1000+i}",
-            "Description":  f"Issue reported at {random.choice(locations)} regarding {cat.lower()}.",
-        })
-    return pd.DataFrame(rows)
+API_BASE = "http://127.0.0.1:8000"
 
-df = get_sample_data()
-st.session_state["df"] = df   # share across pages
+@st.cache_data(ttl=10)
+def fetch_complaints():
+    try:
+        response = requests.get(f"{API_BASE}/api/complaints/", timeout=5)
+        if response.status_code != 200:
+            return pd.DataFrame()
+
+        complaints = response.json()
+        rows = []
+
+        for c in complaints:
+            created_at = c.get("created_at", "")
+            submitted = str(created_at)[:10] if created_at else ""
+            rows.append({
+                "Complaint ID": c.get("complaint_id", "N/A"),
+                "Category": c.get("issue_category", "Unknown"),
+                "Department": c.get("department", "Unknown"),
+                "Location": c.get("location", "Unknown"),
+                "Priority": c.get("priority", "Medium"),
+                "Status": c.get("status", "Submitted"),
+                "Submitted": submitted,
+                "Date": pd.to_datetime(created_at, errors="coerce"),
+                "Citizen": c.get("citizen_name", ""),
+                "Description": c.get("complaint_text", ""),
+            })
+
+        df = pd.DataFrame(rows)
+        if not df.empty:
+            df["Submitted"] = pd.to_datetime(df["Submitted"], errors="coerce").dt.strftime("%d %b %Y")
+            df["_date"] = pd.to_datetime(df["Submitted"], format="%d %b %Y", errors="coerce")
+
+        return df
+
+    except Exception as e:
+        st.error(f"Backend connection error: {e}")
+        return pd.DataFrame()
+
+
+df = fetch_complaints()
+if df.empty:
+    st.warning("No complaints available.")
+    st.stop()
 
 # ── HOME DASHBOARD ─────────────────────────────────────────────────────────────
 # Hero
@@ -318,6 +385,7 @@ st.markdown("""
   <p>India's most intelligent citizen service platform — report civic issues, track resolutions, and hold departments accountable with the power of AI.</p>
 </div>
 """, unsafe_allow_html=True)
+
 
 # Stats
 total     = len(df)
@@ -368,7 +436,7 @@ with left:
         font=dict(family="DM Sans", size=11),
         showlegend=False,
     )
-    st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(fig, width='stretch', config={"displayModeBar": False})
 
 with right:
     st.markdown('<div class="section-header">🏢 By Department</div>', unsafe_allow_html=True)
@@ -385,7 +453,7 @@ with right:
         showlegend=True,
     )
     fig2.update_traces(textinfo="percent", textfont_size=10)
-    st.plotly_chart(fig2, use_container_width=True, config={"displayModeBar": False})
+    st.plotly_chart(fig2, width='stretch', config={"displayModeBar": False})
 
 # Recent complaints table
 st.markdown('<div class="section-header">🗒️ Recent Complaints</div>', unsafe_allow_html=True)

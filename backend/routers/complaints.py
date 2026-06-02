@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends,Body
 from sqlalchemy.orm import Session
 
 from database import get_db
@@ -13,8 +13,6 @@ from services.pdf_service import create_pdf
 import uuid
 
 router = APIRouter()
-
-
 @router.post("/")
 def submit_complaint(
     payload: ComplaintCreate,
@@ -203,4 +201,36 @@ def get_complaint_by_id(
         "updated_at": str(
             complaint.updated_at
         ) if complaint.updated_at else ""
+    }
+@router.put("/{complaint_id}/status")
+def update_complaint_status(
+    complaint_id: str,
+    payload: dict = Body(...),
+    db: Session = Depends(get_db)
+):
+
+    complaint = db.query(
+        Complaint
+    ).filter(
+        Complaint.complaint_id == complaint_id
+    ).first()
+
+    if not complaint:
+        return {
+            "message": "Complaint not found"
+        }
+
+    complaint.status = payload.get(
+        "status",
+        complaint.status
+    )
+
+    db.commit()
+
+    db.refresh(complaint)
+
+    return {
+        "message": "Status updated successfully",
+        "complaint_id": complaint.complaint_id,
+        "new_status": complaint.status
     }

@@ -114,9 +114,9 @@ with col_form:
 
     # Action buttons
     b1, b2, b3 = st.columns(3)
-    submit_btn   = b1.button("🚀 Submit Complaint", type="primary", use_container_width=True)
-    pdf_btn      = b2.button("📄 Generate PDF",     use_container_width=True)
-    email_btn    = b3.button("📧 Send Email",        use_container_width=True)
+    submit_btn   = b1.button("🚀 Submit Complaint", type="primary", width='stretch')
+    pdf_btn      = b2.button("📄 Generate PDF",     width='stretch')
+    email_btn    = b3.button("📧 Send Email",        width='stretch')
 
 with col_preview:
     if complaint_text.strip():
