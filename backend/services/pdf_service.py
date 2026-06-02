@@ -12,14 +12,11 @@ def create_pdf(
     letter
 ):
 
-    pdf_path = (
-        f"generated_pdfs/{complaint_id}.pdf"
-    )
-
-    pdf = SimpleDocTemplate(pdf_path)
+    pdf_path = GENERATED_PDFS_DIR / f"{complaint_id}.pdf"
+    pdf = SimpleDocTemplate(str(pdf_path))
 
     pdf.build([
         Paragraph(letter)
     ])
 
-    return pdf_path
+    return str(pdf_path)
