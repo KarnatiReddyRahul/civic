@@ -321,24 +321,6 @@ if email_btn:
         time.sleep(1)
     st.markdown('<div class="notif-success" style="margin-top:1rem;">📧 Email dispatched successfully!</div>', unsafe_allow_html=True)
 
-# ── Tips Section ───────────────────────────────────────────────────────────────
-st.markdown("<br>", unsafe_allow_html=True)
-st.markdown('<div style="font-size:1rem;font-weight:700;color:#1E293B;margin-bottom:.8rem;">💡 Tips for a Better Report</div>', unsafe_allow_html=True)
-t1, t2, t3, t4 = st.columns(4)
-tips = [
-    ("📍", "Add precise address", "Include landmarks, street names, and pin codes for faster resolution."),
-    ("📸", "Attach photos", "Visual evidence speeds up verification by 3×."),
-    ("🎙️", "Clear Audio", "Speak clearly near your microphone for optimal AI transcriptions."),
-    ("🔔", "Track updates", "Use your Complaint ID to monitor progress in real-time."),
-]
-for col, (icon, title, desc) in zip([t1, t2, t3, t4], tips):
-    col.markdown(f"""
-    <div class="ca-card" style="text-align:center;padding:1.2rem;">
-      <div style="font-size:1.8rem;margin-bottom:.5rem;">{icon}</div>
-      <div style="font-weight:600;font-size:.88rem;margin-bottom:.3rem;">{title}</div>
-      <div style="font-size:.78rem;color:#64748B;">{desc}</div>
-    </div>
-    """, unsafe_allow_html=True)
 
 # Notification Alerts Base Styles
 st.markdown("""
