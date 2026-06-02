@@ -62,6 +62,10 @@ def submit_complaint(
 
         location=payload.location,
 
+        latitude=payload.latitude,
+
+        longitude=payload.longitude,
+
         generated_letter=letter,
 
         status="Submitted",
@@ -206,8 +210,7 @@ def get_complaint_by_id(
 def update_complaint_status(
     complaint_id: str,
     payload: dict = Body(...),
-    db: Session = Depends(get_db)
-):
+    db: Session = Depends(get_db)):
 
     complaint = db.query(
         Complaint

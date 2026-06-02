@@ -2,12 +2,14 @@ import streamlit as st
 import time
 import random
 import requests
-import requests
+import folium
+from streamlit_folium import st_folium
 from datetime import datetime
+from PIL import Image
 
 st.set_page_config(page_title="Report Issue · CivicAssist AI", page_icon="📝", layout="wide")
 
-# shared CSS
+# ── Shared CSS ───────────────────────────────────────────────────────────────
 st.markdown("""
 <style>
 @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&family=Playfair+Display:wght@700&display=swap');
@@ -33,6 +35,7 @@ section[data-testid="stSidebar"] *{color:#CBD5E1!important;}
 </style>
 """, unsafe_allow_html=True)
 
+# ── Sidebar Navigation ────────────────────────────────────────────────────────
 with st.sidebar:
     st.markdown("""<div style="padding:1.2rem 1rem .8rem;border-bottom:1px solid rgba(255,255,255,.1);margin-bottom:1rem;">
       <div style="display:flex;align-items:center;gap:.6rem;"><span style="font-size:1.8rem;">🏛️</span>
@@ -45,7 +48,7 @@ with st.sidebar:
     st.page_link("pages/3_Admin_Dashboard.py",       label="📊  Admin Dashboard")
     st.page_link("pages/4_AI_Complaint_View.py",     label="🤖  AI Complaint View")
 
-# ── AI detection maps ──────────────────────────────────────────────────────────
+# ── AI Detection Maps ──────────────────────────────────────────────────────────
 CATEGORY_MAP = {
     "pothole": ("Pothole / Road Damage", "Roads & Transport", "High"),
     "road":    ("Road Damage",           "Roads & Transport", "High"),
@@ -70,7 +73,7 @@ def detect_category(text):
             return vals
     return ("General Civic Issue", "Municipal Corporation", "Medium")
 
-# ── Page header ────────────────────────────────────────────────────────────────
+# ── Page Header ────────────────────────────────────────────────────────────────
 st.markdown("""
 <div class="page-header">
   <h2>📝 Report a Civic Issue</h2>
@@ -78,7 +81,12 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Form ───────────────────────────────────────────────────────────────────────
+# Pre-define tracking flags
+submit_btn = False
+pdf_btn = False
+email_btn = False
+
+# ── Main Content Form ──────────────────────────────────────────────────────────
 col_form, col_preview = st.columns([3, 2], gap="large")
 
 with col_form:
@@ -91,18 +99,81 @@ with col_form:
         help="Be as descriptive as possible for better AI classification."
     )
 
-    # Voice input placeholder
-    st.markdown("""
-    <div style="display:flex;align-items:center;gap:.6rem;background:#F8FAFC;border:1.5px dashed #CBD5E1;border-radius:8px;padding:.7rem 1rem;margin-bottom:.8rem;cursor:pointer;">
-      <span style="font-size:1.4rem;">🎙️</span>
-      <div>
-        <div style="font-size:.85rem;font-weight:600;color:#64748B;">Voice Input (Coming Soon)</div>
-        <div style="font-size:.75rem;color:#94A3B8;">Click to record your complaint in your language</div>
-      </div>
-    </div>
-    """, unsafe_allow_html=True)
+    # 🎙️ Voice Input Component
+    st.subheader("🎙️ Voice Description")
+    voice_audio = st.audio_input("Record your issue details directly (AI will transcribe it)")
+    
+    if voice_audio is not None:
+        st.audio(voice_audio, format="audio/wav")
+        st.success("Voice description captured successfully!")
 
-    location = st.text_input("📍 Location / Address", placeholder="e.g. 5th Block, Koramangala, Bengaluru - 560095")
+    # 📷 Image Upload Section
+    st.subheader("📷 Upload an Image")
+    uploaded_image = st.file_uploader(
+        "Choose an image",
+        type=["jpg", "jpeg", "png"]
+    )
+
+    if uploaded_image is not None:
+        image = Image.open(uploaded_image)
+        st.image(
+            image,
+            caption="Uploaded Image",
+            use_container_width=True
+        )
+        st.success("Image uploaded successfully!")
+
+    # Location Search + Map
+    location_query = st.text_input(
+        "📍 Location / Address",
+        placeholder="Type location (e.g. Koramangala)"
+    )
+
+    location = ""
+    lat = None
+    lon = None
+
+    if location_query:
+        try:
+            response = requests.get(
+                "https://nominatim.openstreetmap.org/search",
+                params={
+                    "q": location_query,
+                    "format": "json",
+                    "limit": 5
+                },
+                headers={
+                    "User-Agent": "CivicAssistAI"
+                }
+            )
+
+            results = response.json()
+
+            if results:
+                location_options = {
+                    item["display_name"]: (
+                        float(item["lat"]),
+                        float(item["lon"])
+                    )
+                    for item in results
+                }
+
+                location = st.selectbox(
+                    "Select Matching Location",
+                    list(location_options.keys())
+                )
+
+                lat, lon = location_options[location]
+                st.success(f"📍 Selected Location: {location}")
+
+                m = folium.Map(location=[lat, lon], zoom_start=15)
+                folium.Marker([lat, lon], popup=location, tooltip=location).add_to(m)
+                st_folium(m, width=700, height=350)
+            else:
+                st.warning("No matching locations found.")
+
+        except Exception as e:
+            st.error(f"Location search failed: {e}")
 
     col_a, col_b = st.columns(2)
     with col_a:
@@ -114,14 +185,15 @@ with col_form:
 
     # Action buttons
     b1, b2, b3 = st.columns(3)
-    submit_btn   = b1.button("🚀 Submit Complaint", type="primary", width='stretch')
-    pdf_btn      = b2.button("📄 Generate PDF",     width='stretch')
-    email_btn    = b3.button("📧 Send Email",        width='stretch')
+    submit_btn = b1.button("🚀 Submit Complaint", type="primary", use_container_width=True)
+    pdf_btn = b2.button("📄 Generate PDF", use_container_width=True)
+    email_btn = b3.button("📧 Send Email", use_container_width=True)
 
+# ── Preview Pane ───────────────────────────────────────────────────────────────
 with col_preview:
     if complaint_text.strip():
         category, dept, priority = detect_category(complaint_text)
-        p_class = {"High":"badge-high","Medium":"badge-medium","Low":"badge-low"}[priority]
+        p_class = {"High": "badge-high", "Medium": "badge-medium", "Low": "badge-low"}[priority]
 
         st.markdown(f"""
         <div class="ca-card" style="margin-bottom:1rem;">
@@ -146,10 +218,10 @@ with col_preview:
         if submit_btn or pdf_btn or email_btn:
             steps_done = 4
 
-        steps = [("Classified","✓"), ("Routed","✓"), ("Letter Generated","✓"), ("Email Sent","✓")]
+        steps = [("Classified", "✓"), ("Routed", "✓"), ("Letter Generated", "✓"), ("Email Sent", "✓")]
         step_html = '<div class="step-row">'
         for i, (label, icon) in enumerate(steps):
-            done   = i < steps_done
+            done = i < steps_done
             active = i == steps_done
             dot_cls = "dot-done" if done else ("dot-active" if active else "dot-idle")
             conn_cls = "connector-done" if done and i < 3 else "connector"
@@ -177,46 +249,40 @@ with col_preview:
         <div class="ca-card" style="text-align:center;padding:2.5rem 1rem;">
           <div style="font-size:3rem;margin-bottom:.8rem;">🤖</div>
           <div style="font-weight:600;color:#1E293B;margin-bottom:.4rem;">AI Detection</div>
-          <div style="font-size:.88rem;color:#64748B;">Start typing your complaint on the left — AI will instantly classify it, route it to the right department, and assign priority.</div>
+          <div style="font-size:.88rem;color:#64748B;">Start typing your complaint or use the audio recorder on the left — AI will instantly process it.</div>
         </div>
         """, unsafe_allow_html=True)
 
-# ── Notifications ──────────────────────────────────────────────────────────────
+# ── Notifications & Actions ────────────────────────────────────────────────────
 if submit_btn:
-
-    if not complaint_text.strip():
+    if not complaint_text.strip() and voice_audio is None:
         st.markdown(
-            '<div class="notif-error" style="margin-top:1rem;">⚠️ Please enter complaint details.</div>',
+            '<div class="notif-error" style="margin-top:1rem;">⚠️ Please provide a text description or record a voice note.</div>',
             unsafe_allow_html=True
         )
-
     elif not location.strip():
         st.markdown(
             '<div class="notif-error" style="margin-top:1rem;">⚠️ Please enter location.</div>',
             unsafe_allow_html=True
         )
-
     else:
-
         try:
-
             with st.spinner("🤖 Submitting complaint to CivicAssist AI..."):
-
-                response = requests.post(
-                    "http://127.0.0.1:8000/api/complaints/",
-                    json={
-                        "citizen_name": contact_name if contact_name else "Anonymous",
-                        "email": contact_phone if contact_phone else "user@example.com",
-                        "phone": contact_phone if contact_phone else "0000000000",
-                        "complaint_text": complaint_text,
-                        "location": location
-                    }
-                )
+                payload = {
+                    "citizen_name": contact_name if contact_name else "Anonymous",
+                    "email": contact_phone if contact_phone else "user@example.com",
+                    "phone": contact_phone if contact_phone else "0000000000",
+                    "complaint_text": complaint_text if complaint_text.strip() else "Voice Recording Attached",
+                    "location": location,
+                    "latitude": lat,
+                    "longitude": lon
+                }
+                
+                # If your backend processes voice files via multipart-form, handle files parameter here
+                response = requests.post("http://127.0.0.1:8000/api/complaints/", json=payload)
 
             if response.status_code == 200:
-
                 data = response.json()
-
                 st.markdown(
                     f'''
                     <div class="notif-success" style="margin-top:1rem;">
@@ -225,48 +291,25 @@ if submit_btn:
                     ''',
                     unsafe_allow_html=True
                 )
-
                 st.balloons()
 
                 st.markdown("### 📋 Complaint Details")
-
-                st.write(
-                    "**Complaint ID:**",
-                    data["complaint_id"]
-                )
-
-                st.write(
-                    "**Category:**",
-                    data["category"]
-                )
-
-                st.write(
-                    "**Department:**",
-                    data["department"]
-                )
-
-                st.write(
-                    "**Priority:**",
-                    data["priority"]
-                )
+                st.write("**Complaint ID:**", data["complaint_id"])
+                st.write("**Category:**", data["category"])
+                st.write("**Department:**", data["department"])
+                st.write("**Priority:**", data["priority"])
 
                 st.text_area(
                     "Generated Complaint Letter",
                     data["generated_letter"],
                     height=250
                 )
-
             else:
-
-                st.error(
-                    f"Backend Error: {response.text}"
-                )
+                st.error(f"Backend Error: {response.text}")
 
         except Exception as e:
+            st.error(f"Connection Error: {str(e)}")
 
-            st.error(
-                f"Connection Error: {str(e)}"
-            )
 
 if pdf_btn:
     with st.spinner("📄 Generating formal complaint PDF..."):
@@ -276,19 +319,19 @@ if pdf_btn:
 if email_btn:
     with st.spinner("📧 Dispatching email to department..."):
         time.sleep(1)
-    st.markdown('<div class="notif-success" style="margin-top:1rem;">📧 Email dispatched to <strong>roads@bbmp.gov.in</strong> successfully!</div>', unsafe_allow_html=True)
+    st.markdown('<div class="notif-success" style="margin-top:1rem;">📧 Email dispatched successfully!</div>', unsafe_allow_html=True)
 
-# ── Tips section ───────────────────────────────────────────────────────────────
+# ── Tips Section ───────────────────────────────────────────────────────────────
 st.markdown("<br>", unsafe_allow_html=True)
 st.markdown('<div style="font-size:1rem;font-weight:700;color:#1E293B;margin-bottom:.8rem;">💡 Tips for a Better Report</div>', unsafe_allow_html=True)
 t1, t2, t3, t4 = st.columns(4)
 tips = [
-    ("📍","Add precise address","Include landmarks, street names, and pin codes for faster resolution."),
-    ("📸","Attach photos","Visual evidence speeds up verification by 3×."),
-    ("📝","Be specific","Mention duration, severity, and impact on daily life."),
-    ("🔔","Track updates","Use your Complaint ID to monitor progress in real-time."),
+    ("📍", "Add precise address", "Include landmarks, street names, and pin codes for faster resolution."),
+    ("📸", "Attach photos", "Visual evidence speeds up verification by 3×."),
+    ("🎙️", "Clear Audio", "Speak clearly near your microphone for optimal AI transcriptions."),
+    ("🔔", "Track updates", "Use your Complaint ID to monitor progress in real-time."),
 ]
-for col, (icon, title, desc) in zip([t1,t2,t3,t4], tips):
+for col, (icon, title, desc) in zip([t1, t2, t3, t4], tips):
     col.markdown(f"""
     <div class="ca-card" style="text-align:center;padding:1.2rem;">
       <div style="font-size:1.8rem;margin-bottom:.5rem;">{icon}</div>
@@ -297,7 +340,7 @@ for col, (icon, title, desc) in zip([t1,t2,t3,t4], tips):
     </div>
     """, unsafe_allow_html=True)
 
-# CSS for notif (reuse from main app)
+# Notification Alerts Base Styles
 st.markdown("""
 <style>
 .notif-success{background:#ECFDF5;border:1px solid #6EE7B7;border-radius:8px;padding:.8rem 1.2rem;color:#065F46;font-weight:500;font-size:.9rem;}
