@@ -104,22 +104,20 @@ Citizen Complaint
 ```text
 civicassist-ai/
 
-├── frontend/
-│   └── app.py
-│
+├── app.py
+├── pages/
+│   ├── 1_Report_Issue.py
+│   ├── 2_Complaint_History.py
+│   ├── 3_Admin_Dashboard.py
+│   └── 4_AI_Complaint_View.py
 ├── backend/
 │   ├── main.py
 │   ├── database.py
-│   ├── complaint_router.py
-│   ├── ai_generator.py
-│   └── email_service.py
-│
-├── data/
-│   ├── complaints.db
-│   └── departments.json
-│
-├── generated_pdfs/
-│
+│   ├── db_helper.py
+│   ├── models.py
+│   ├── routers/
+│   └── services/
+├── requirements.txt
 ├── README.md
 ├── CONTRIBUTING.md
 ├── USER_MANUAL.md
@@ -165,8 +163,22 @@ uvicorn backend.main:app --reload
 ### Run Frontend
 
 ```bash
-streamlit run frontend/app.py
+streamlit run app.py
 ```
+
+> Note: Start the backend first so the frontend pages that use the API can connect properly.
+
+### Streamlit Cloud Deployment
+
+For Streamlit Cloud, the app still needs a backend service. Use an external backend host and set the `API_BASE` environment variable in Streamlit Cloud to point to that backend.
+
+Example environment variable:
+
+```bash
+API_BASE=https://your-backend.example.com
+```
+
+This avoids hardcoded `127.0.0.1` URLs in the deployed frontend.
 
 ---
 

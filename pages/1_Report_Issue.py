@@ -1,3 +1,4 @@
+import os
 import streamlit as st
 import time
 import random
@@ -6,6 +7,11 @@ import folium
 from streamlit_folium import st_folium
 from datetime import datetime
 from PIL import Image
+
+API_BASE = os.environ.get(
+    "API_BASE",
+    "http://127.0.0.1:8000"
+)
 
 st.set_page_config(page_title="Report Issue · CivicAssist AI", page_icon="📝", layout="wide")
 
@@ -106,22 +112,6 @@ with col_form:
     if voice_audio is not None:
         st.audio(voice_audio, format="audio/wav")
         st.success("Voice description captured successfully!")
-
-    # 📷 Image Upload Section
-    st.subheader("📷 Upload an Image")
-    uploaded_image = st.file_uploader(
-        "Choose an image",
-        type=["jpg", "jpeg", "png"]
-    )
-
-    if uploaded_image is not None:
-        image = Image.open(uploaded_image)
-        st.image(
-            image,
-            caption="Uploaded Image",
-            use_container_width=True
-        )
-        st.success("Image uploaded successfully!")
 
     # Location Search + Map
     location_query = st.text_input(
@@ -279,20 +269,10 @@ if submit_btn:
                 }
                 
                 # If your backend processes voice files via multipart-form, handle files parameter here
-                response = requests.post("http://127.0.0.1:8000/api/complaints/", json=payload)
+                response = requests.post(f"{API_BASE}/api/complaints/", json=payload)
 
             if response.status_code == 200:
                 data = response.json()
-                st.markdown(
-                    f'''
-                    <div class="notif-success" style="margin-top:1rem;">
-                    ✅ Complaint <strong>{data["complaint_id"]}</strong> submitted successfully!
-                    </div>
-                    ''',
-                    unsafe_allow_html=True
-                )
-                st.balloons()
-
                 st.markdown("### 📋 Complaint Details")
                 st.write("**Complaint ID:**", data["complaint_id"])
                 st.write("**Category:**", data["category"])
@@ -304,6 +284,7 @@ if submit_btn:
                     data["generated_letter"],
                     height=250
                 )
+                st.balloons()
             else:
                 st.error(f"Backend Error: {response.text}")
 

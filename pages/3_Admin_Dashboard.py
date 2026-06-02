@@ -1,11 +1,12 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import requests
 import plotly.express as px
 import plotly.graph_objects as go
-from geopy.geocoders import Nominatim
-
+from backend.db_helper import (
+    get_all_complaints,
+    update_complaint_status
+)
 
 st.set_page_config(page_title="Admin Dashboard · CivicAssist AI", page_icon="📊", layout="wide")
 
@@ -46,43 +47,28 @@ with st.sidebar:
     st.page_link("pages/4_AI_Complaint_View.py",    label="🤖  AI Complaint View")
 
 # ── Sample data / backend fetch ─────────────────────────────────────────────────
-@st.cache_data(ttl=10)
+@st.cache_data(ttl=5)
 def get_data():
-    try:
-        response = requests.get("http://127.0.0.1:8000/api/complaints/")
-        if response.status_code != 200:
-            return pd.DataFrame()
+    complaints = get_all_complaints()
 
-        complaints = response.json()
-        rows = []
-        for c in complaints:
-            rows.append({
-                "Complaint ID": c.get("complaint_id", "N/A"),
-                "Category": c.get("issue_category", "Unknown"),
-                "Department": c.get("department", "Unknown"),
-                "Location": c.get("location", "Unknown"),
-                "Priority": c.get("priority", "Medium"),
-                "Status": c.get("status", "Submitted"),
-                "Date": pd.to_datetime(c.get("created_at", ""), errors="coerce"),
-                "Submitted": str(c.get("created_at", ""))[:10],
-                "Resolve Days": None,
-                "Description": c.get("complaint_text", ""),
-            })
+    rows = []
 
-        df = pd.DataFrame(rows)
-        if not df.empty and "Submitted" in df.columns:
-            df["Date"] = pd.to_datetime(df["Submitted"], errors="coerce")
-        return df
+    for c in complaints:
 
-    except Exception as e:
-        st.error(f"Backend connection error: {e}")
-        return pd.DataFrame()
+        rows.append({
+            "Complaint ID": c.complaint_id,
+            "Category": c.issue_category,
+            "Department": c.department,
+            "Location": c.location,
+            "Priority": c.priority,
+            "Status": c.status,
+            "Date": pd.to_datetime(c.created_at),
+            "Submitted": str(c.created_at)[:10],
+            "Resolve Days": None,
+            "Description": c.complaint_text
+        })
 
-df = get_data()
-
-if df.empty:
-    st.warning("No complaints available.")
-    st.stop()
+    return pd.DataFrame(rows)
 
 # ── Header ─────────────────────────────────────────────────────────────────────
 st.markdown("""
@@ -92,10 +78,17 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
+# ── Load Data ──────────────────────────────────────────────────────────────────
+df = get_data()
+
+if df.empty:
+    st.warning("No complaints found.")
+    st.stop()
+
 # ── KPI Cards ──────────────────────────────────────────────────────────────────
 total = len(df)
 resolved = len(df[df["Status"]=="Resolved"])
-avg_resolve = df[df["Status"]=="Resolved"]["Resolve Days"].mean()
+avg_resolve = df[df["Status"]=="Resolved"]["Resolve Days"].mean() if resolved > 0 else 0
 high = len(df[df["Priority"]=="High"])
 
 def stat_card(col, icon, label, value, delta, color):
@@ -104,12 +97,23 @@ def stat_card(col, icon, label, value, delta, color):
 
 c1, c2, c3, c4 = st.columns(4)
 stat_card(c1,"📋","Total Complaints",    total,    "↑ 18 this month",       "#1A56DB")
-stat_card(c2,"✅","Resolution Rate",     f"{resolved*100//total}%","↑ 4% from last month",  "#10B981")
+resolution_rate = 0
+
+if total > 0:
+    resolution_rate = round((resolved / total) * 100)
+
+stat_card(
+    c2,
+    "✅",
+    "Resolution Rate",
+    f"{resolution_rate}%",
+    "↑ 4% from last month",
+    "#10B981"
+)
 stat_card(c3,"⏱️","Avg Resolve Time",   f"{avg_resolve:.1f}d","↓ 2.3 days improvement", "#F59E0B")
 stat_card(c4,"🚨","High Priority Open",  high,     "Requires attention",     "#EF4444")
 
 st.markdown("<br>", unsafe_allow_html=True)
-API_BASE = "http://127.0.0.1:8000"
 
 st.subheader("🛠 Complaint Status Management")
 
@@ -158,58 +162,27 @@ new_status = st.selectbox(
 
 if st.button("✅ Update Status"):
 
-    st.write(
-        f"Updating {complaint_id} → {new_status}"
+    complaint = update_complaint_status(
+        complaint_id,
+        new_status
     )
 
-    try:
+    if complaint:
 
-        response = requests.put(
-            f"{API_BASE}/api/complaints/{complaint_id}/status",
-            json={
-                "status": new_status
-            }
+        st.success(
+            f"Complaint {complaint_id} updated successfully!"
         )
 
-        st.write("Status Code:", response.status_code)
-        st.write("Response:", response.text)
+        st.cache_data.clear()
 
-        if response.status_code == 200:
+        st.rerun()
 
-            st.success(
-                f"Complaint {complaint_id} updated successfully!"
-            )
+    else:
 
-            st.rerun()
-
-        else:
-
-            st.error(response.text)
-
-    except Exception as e:
-
-        st.error(str(e))
-def get_coordinates(location):
-
-    try:
-
-        geolocator = Nominatim(
-            user_agent="civicassist"
+        st.error(
+            "Complaint not found"
         )
 
-        loc = geolocator.geocode(location)
-
-        if loc:
-
-            return (
-                loc.latitude,
-                loc.longitude
-            )
-
-    except:
-        pass
-
-    return None, None
 # ── Charts Row 1 ───────────────────────────────────────────────────────────────
 ch1, ch2 = st.columns([3,2])
 
@@ -279,92 +252,48 @@ with ch3:
 
 with ch4:
     st.markdown('<div class="section-header">📍 Complaint Hotspot Map</div>', unsafe_allow_html=True)
-    # Bangalore coordinates for demo
+    # Hyderabad location coordinates
     loc_coords = {
-    "Miyapur": (17.4948, 78.3915),
-    "Miyapur Metro Station": (17.4960, 78.3919),
-    "Gachibowli": (17.4401, 78.3489),
-    "Kukatpally": (17.4849, 78.4138),
-    "Hitech City": (17.4435, 78.3772),
-    "Madhapur": (17.4486, 78.3908),
-    "Ameerpet": (17.4375, 78.4483),
-    "Secunderabad": (17.4399, 78.4983),
-    "LB Nagar": (17.3457, 78.5520),
-    "Uppal": (17.4058, 78.5591),
-    "Banjara Hills": (17.4126, 78.4482),
-    "Jubilee Hills": (17.4326, 78.4071),
-
+        "Miyapur": (17.4948, 78.3915),
+        "Miyapur Metro Station": (17.4960, 78.3919),
+        "Gachibowli": (17.4401, 78.3489),
+        "Kukatpally": (17.4849, 78.4138),
+        "Hitech City": (17.4435, 78.3772),
+        "Madhapur": (17.4486, 78.3908),
+        "Ameerpet": (17.4375, 78.4483),
+        "Secunderabad": (17.4399, 78.4983),
+        "LB Nagar": (17.3457, 78.5520),
+        "Uppal": (17.4058, 78.5591),
+        "Banjara Hills": (17.4126, 78.4482),
+        "Jubilee Hills": (17.4326, 78.4071),
     }
+    
     selected_location = selected_row.iloc[0]["Location"]
 
-if selected_location in loc_coords:
+    if selected_location in loc_coords:
+        lat, lon = loc_coords[selected_location]
 
-    lat, lon = loc_coords[selected_location]
+        map_df = pd.DataFrame({
+            "Location": [selected_location],
+            "lat": [lat],
+            "lon": [lon]
+        })
 
-    map_df = pd.DataFrame({
-        "Location": [selected_location],
-        "lat": [lat],
-        "lon": [lon]
-    })
-    
+        fig3 = px.scatter_mapbox(
+            map_df,
+            lat="lat",
+            lon="lon",
+            hover_name="Location",
+            zoom=14,
+            height=350,
+            mapbox_style="carto-positron"
+        )
+        fig3.update_layout(
+            margin=dict(l=0, r=0, t=0, b=0),
+            coloraxis_showscale=False,
+            font=dict(family="DM Sans"),
+        )
+        st.plotly_chart(fig3, width='stretch', config={"displayModeBar": False})
+    else:
+        st.info(f"Map coordinates not available for {selected_location}")
 
-    fig3 = px.scatter_mapbox(
-    map_df,
-    lat="lat",
-    lon="lon",
-    hover_name="Location",
-    zoom=14,
-    height=350,
-    mapbox_style="carto-positron"
-)
-    fig3.update_layout(
-        margin=dict(l=0,r=0,t=0,b=0),
-        coloraxis_showscale=False,
-        font=dict(family="DM Sans"),
-    )
-    st.plotly_chart(fig3, width='stretch', config={"displayModeBar":False})
-
-# ── Heatmap ────────────────────────────────────────────────────────────────────
-st.markdown('<div class="section-header">🔥 Complaint Heatmap — Category × Location</div>', unsafe_allow_html=True)
-
-heat = df.groupby(["Category","Location"]).size().reset_index(name="Count")
-heat_pivot = heat.pivot(index="Category", columns="Location", values="Count").fillna(0)
-
-fig4 = go.Figure(go.Heatmap(
-    z=heat_pivot.values,
-    x=heat_pivot.columns.tolist(),
-    y=heat_pivot.index.tolist(),
-    colorscale="Blues",
-    text=heat_pivot.values.astype(int),
-    texttemplate="%{text}",
-    textfont={"size":10},
-    showscale=True,
-    colorbar=dict(thickness=12, len=1),
-))
-fig4.update_layout(
-    margin=dict(l=0,r=0,t=10,b=0), height=300,
-    paper_bgcolor="rgba(0,0,0,0)", plot_bgcolor="rgba(0,0,0,0)",
-    xaxis=dict(tickfont=dict(size=10)),
-    yaxis=dict(tickfont=dict(size=10)),
-    font=dict(family="DM Sans", size=11),
-)
-st.plotly_chart(fig4, width='stretch', config={"displayModeBar":False})
-
-# ── Recent activity feed ────────────────────────────────────────────────────────
-st.markdown('<div class="section-header">⚡ Recent Activity</div>', unsafe_allow_html=True)
-activities = [
-    ("✅","CA-2025-1048 resolved by Roads & Transport Dept","2 min ago","#10B981"),
-    ("📋","New complaint CA-2025-1119 submitted — Pothole, Whitefield","8 min ago","#1A56DB"),
-    ("🔧","CA-2025-1031 status updated to In Progress","15 min ago","#F59E0B"),
-    ("🚨","High priority complaint CA-2025-1052 escalated","28 min ago","#EF4444"),
-    ("📧","Automated email dispatched to Water Works Dept","45 min ago","#06B6D4"),
-]
-act_html = '<div class="ca-card" style="padding:0;overflow:hidden;">'
-for icon, msg, time_ago, color in activities:
-    act_html += f"""<div style="display:flex;align-items:center;gap:1rem;padding:.9rem 1.2rem;border-bottom:1px solid #F1F5F9;">
-    <div style="width:32px;height:32px;border-radius:50%;background:{color}15;display:flex;align-items:center;justify-content:center;font-size:1rem;flex-shrink:0;">{icon}</div>
-    <div style="flex:1;font-size:.87rem;">{msg}</div>
-    <div style="font-size:.75rem;color:#94A3B8;white-space:nowrap;">{time_ago}</div>
-    </div>"""
-act_html += '</div>'
-st.markdown(act_html, unsafe_allow_html=True)

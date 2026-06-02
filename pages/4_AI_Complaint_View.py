@@ -1,7 +1,13 @@
+import os
 import streamlit as st
 import requests
 import time
 from datetime import datetime
+
+API_BASE = os.environ.get(
+    "API_BASE",
+    "http://127.0.0.1:8000"
+)
 
 st.set_page_config(page_title="AI Complaint View · CivicAssist AI", page_icon="🤖", layout="wide")
 
@@ -57,7 +63,7 @@ def load_complaints():
     try:
 
         response = requests.get(
-            "http://127.0.0.1:8000/api/complaints/"
+            f"{API_BASE}/api/complaints/"
         )
 
         if response.status_code == 200:
