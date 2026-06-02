@@ -2,10 +2,11 @@ import os
 import pandas as pd
 import requests
 import streamlit as st
+from backend.db_helper import get_all_complaints_dict
 
 API_BASE = os.environ.get(
     "API_BASE",
-    "http://127.0.0.1:8000"
+    ""
 )
 
 st.set_page_config(page_title="Complaint History · CivicAssist AI", page_icon="📋", layout="wide")
@@ -46,15 +47,15 @@ with st.sidebar:
 def get_data():
 
     try:
-
-        response = requests.get(
-            f"{API_BASE}/api/complaints/"
-        )
-
-        if response.status_code != 200:
-            return pd.DataFrame()
-
-        complaints = response.json()
+        if API_BASE:
+            response = requests.get(
+                f"{API_BASE}/api/complaints/"
+            )
+            if response.status_code != 200:
+                return pd.DataFrame()
+            complaints = response.json()
+        else:
+            complaints = get_all_complaints_dict()
 
         rows = []
 

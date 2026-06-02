@@ -1,3 +1,4 @@
+import os
 import requests
 
 def generate_letter(
@@ -19,20 +20,27 @@ Description:
 {description}
 """
 
+    model_host = os.environ.get(
+        "AI_GENERATOR_BASE",
+        "http://localhost:11434"
+    )
+
     try:
 
         response = requests.post(
-            "http://localhost:11434/api/generate",
+            f"{model_host}/api/generate",
             json={
                 "model":"llama3",
                 "prompt":prompt,
                 "stream":False
-            }
+            },
+            timeout=10
         )
 
-        return response.json()["response"]
+        response.raise_for_status()
+        return response.json().get("response", "")
 
-    except:
+    except Exception:
 
         return f"""
 Complaint regarding {category}

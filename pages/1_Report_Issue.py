@@ -7,10 +7,11 @@ import folium
 from streamlit_folium import st_folium
 from datetime import datetime
 from PIL import Image
+from backend.db_helper import create_complaint
 
 API_BASE = os.environ.get(
     "API_BASE",
-    "http://127.0.0.1:8000"
+    ""
 )
 
 st.set_page_config(page_title="Report Issue · CivicAssist AI", page_icon="📝", layout="wide")
@@ -267,12 +268,25 @@ if submit_btn:
                     "latitude": lat,
                     "longitude": lon
                 }
-                
-                # If your backend processes voice files via multipart-form, handle files parameter here
-                response = requests.post(f"{API_BASE}/api/complaints/", json=payload)
 
-            if response.status_code == 200:
-                data = response.json()
+                if API_BASE:
+                    response = requests.post(f"{API_BASE}/api/complaints/", json=payload)
+                    if response.status_code == 200:
+                        data = response.json()
+                    else:
+                        st.error(f"Backend Error: {response.text}")
+                        data = None
+                else:
+                    complaint = create_complaint(payload)
+                    data = {
+                        "complaint_id": complaint.complaint_id,
+                        "category": complaint.issue_category,
+                        "department": complaint.department,
+                        "priority": complaint.priority,
+                        "generated_letter": complaint.generated_letter
+                    }
+
+            if data:
                 st.markdown("### 📋 Complaint Details")
                 st.write("**Complaint ID:**", data["complaint_id"])
                 st.write("**Category:**", data["category"])
@@ -285,19 +299,9 @@ if submit_btn:
                     height=250
                 )
                 st.balloons()
-            else:
-                st.error(f"Backend Error: {response.text}")
-
         except Exception as e:
-            st.error(f"Connection Error: {str(e)}")
+            st.error(f"Submission failed: {e}")
 
-
-if pdf_btn:
-    with st.spinner("📄 Generating formal complaint PDF..."):
-        time.sleep(1.2)
-    st.markdown('<div class="notif-success" style="margin-top:1rem;">📄 PDF generated successfully! Check <a href="#">AI Complaint View</a> to download.</div>', unsafe_allow_html=True)
-
-if email_btn:
     with st.spinner("📧 Dispatching email to department..."):
         time.sleep(1)
     st.markdown('<div class="notif-success" style="margin-top:1rem;">📧 Email dispatched successfully!</div>', unsafe_allow_html=True)

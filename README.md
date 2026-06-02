@@ -170,15 +170,18 @@ streamlit run app.py
 
 ### Streamlit Cloud Deployment
 
-For Streamlit Cloud, the app still needs a backend service. Use an external backend host and set the `API_BASE` environment variable in Streamlit Cloud to point to that backend.
+This app can run on Streamlit Cloud without a separate FastAPI server by using the local backend helpers and SQLite database.
 
-Example environment variable:
+If you want to deploy only the frontend on Streamlit Cloud, no backend `uvicorn` process is required. The app will use local database calls by default.
+
+If you prefer to use a separate backend service instead, set the following environment variables in Streamlit Cloud:
 
 ```bash
 API_BASE=https://your-backend.example.com
+AI_GENERATOR_BASE=https://your-model-host
 ```
 
-This avoids hardcoded `127.0.0.1` URLs in the deployed frontend.
+If `API_BASE` is not set, the app uses the bundled backend logic directly.
 
 ---
 
