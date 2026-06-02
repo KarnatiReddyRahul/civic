@@ -369,6 +369,7 @@ def fetch_complaints():
             df["Submitted"] = pd.to_datetime(df["Submitted"], errors="coerce").dt.strftime("%d %b %Y")
             df["_date"] = pd.to_datetime(df["Submitted"], format="%d %b %Y", errors="coerce")
         df = df.sort_values("_date", ascending=False)
+        return df
     except Exception as e:
         st.error(f"Backend connection error: {e}")
         return pd.DataFrame()
