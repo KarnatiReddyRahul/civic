@@ -287,6 +287,7 @@ if submit_btn:
                     }
 
             if data:
+                st.cache_data.clear()
                 st.markdown("### 📋 Complaint Details")
                 st.write("**Complaint ID:**", data["complaint_id"])
                 st.write("**Category:**", data["category"])

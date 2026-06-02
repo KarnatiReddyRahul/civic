@@ -12,7 +12,7 @@ def get_all_complaints():
     db = SessionLocal()
 
     try:
-        return db.query(Complaint).all()
+        return db.query(Complaint).order_by(Complaint.created_at.desc()).all()
 
     finally:
         db.close()
