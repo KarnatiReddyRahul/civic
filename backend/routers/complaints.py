@@ -1,16 +1,14 @@
-from fastapi import APIRouter, Depends,Body
-from sqlalchemy.orm import Session
+import uuid
 
 from database import get_db
-from schemas import ComplaintCreate
+from fastapi import APIRouter, Body, Depends
 from models import Complaint
-
+from schemas import ComplaintCreate
 from services.ai_classifier import classify
-from services.router_service import route
 from services.ai_generator import generate_letter
 from services.pdf_service import create_pdf
-
-import uuid
+from services.router_service import route
+from sqlalchemy.orm import Session
 
 router = APIRouter()
 @router.post("/")

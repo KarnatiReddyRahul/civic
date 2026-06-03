@@ -1,7 +1,12 @@
 import os
-import streamlit as st
+
+import pandas as pd
+import plotly.express as px
+import plotly.graph_objects as go
 import requests
-from backend.db_helper import get_all_complaints, get_all_complaints_dict
+import streamlit as st
+
+from backend.db_helper import get_all_complaints_dict
 
 API_BASE = os.environ.get("API_BASE", "")
 
@@ -332,8 +337,7 @@ with st.sidebar:
     """, unsafe_allow_html=True)
 
 # ── Shared data (cached) ───────────────────────────────────────────────────────
-import pandas as pd, numpy as np, plotly.graph_objects as go, plotly.express as px
-from datetime import datetime, timedelta
+
 
 @st.cache_data(ttl=10)
 def fetch_complaints():
@@ -498,7 +502,7 @@ st.markdown(f"""
     </tr>
   </thead>
   <tbody>
-    {"".join(f'<tr style="border-bottom:1px solid #F1F5F9;">' + row + '</tr>' for row in rows_html.split('</tr>') if '<tr' in row)}
+    {"".join('<tr style="border-bottom:1px solid #F1F5F9;">' + row + '</tr>' for row in rows_html.split('</tr>') if '<tr' in row)}
   </tbody>
 </table>
 </div>

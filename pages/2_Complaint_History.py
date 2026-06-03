@@ -1,7 +1,9 @@
 import os
+
 import pandas as pd
 import requests
 import streamlit as st
+
 from backend.db_helper import get_all_complaints_dict
 
 API_BASE = os.environ.get(

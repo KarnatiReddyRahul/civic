@@ -1,8 +1,10 @@
 import os
-import streamlit as st
-import requests
 import time
 from datetime import datetime
+
+import requests
+import streamlit as st
+
 from backend.db_helper import get_all_complaints_dict
 
 API_BASE = os.environ.get(
@@ -71,7 +73,7 @@ def load_complaints():
             return []
         return get_all_complaints_dict()
 
-    except:
+    except Exception:
         return []
 
 complaints = load_complaints()
@@ -110,11 +112,16 @@ generate_btn = st.button("🤖 Generate AI Complaint Letter", type="primary")
 # ── Letter templates ───────────────────────────────────────────────────────────
 def get_dept_and_priority(text):
     t = text.lower()
-    if "pothole" in t or "road" in t: return "The Executive Engineer, Roads & Transport Department, BBMP", "High", "Pothole / Road Damage"
-    if "light" in t: return "The Assistant Executive Engineer, Electricity Department, BBMP", "Medium", "Broken Streetlight"
-    if "garbage" in t or "waste" in t or "dump" in t: return "The Health Officer, Sanitation Department, BBMP", "High", "Garbage / Waste Dump"
-    if "water" in t or "leak" in t: return "The Assistant Engineer, Water Works Department, BWSSB", "High", "Water Leakage"
-    if "drain" in t: return "The Assistant Executive Engineer, Drainage Department, BBMP", "Medium", "Drainage Issue"
+    if "pothole" in t or "road" in t:
+        return "The Executive Engineer, Roads & Transport Department, BBMP", "High", "Pothole / Road Damage"
+    if "light" in t:
+        return "The Assistant Executive Engineer, Electricity Department, BBMP", "Medium", "Broken Streetlight"
+    if "garbage" in t or "waste" in t or "dump" in t:
+        return "The Health Officer, Sanitation Department, BBMP", "High", "Garbage / Waste Dump"
+    if "water" in t or "leak" in t:
+        return "The Assistant Engineer, Water Works Department, BWSSB", "High", "Water Leakage"
+    if "drain" in t:
+        return "The Assistant Executive Engineer, Drainage Department, BBMP", "Medium", "Drainage Issue"
     return "The Commissioner, Bruhat Bengaluru Mahanagara Palike (BBMP)", "Medium", "General Civic Issue"
 
 def generate_letter(text, location, name, complaint_id, today):

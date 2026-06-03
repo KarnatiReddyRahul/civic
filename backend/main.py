@@ -1,12 +1,7 @@
-from fastapi import FastAPI
-
-from models import Base
-
 from database import engine
-
-from routers import complaints
-from routers import dashboard
-from routers import admin
+from fastapi import FastAPI
+from models import Base
+from routers import admin, complaints, dashboard
 
 Base.metadata.create_all(
     bind=engine

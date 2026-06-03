@@ -1,12 +1,9 @@
-import streamlit as st
 import pandas as pd
-import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
-from backend.db_helper import (
-    get_all_complaints,
-    update_complaint_status
-)
+import streamlit as st
+
+from backend.db_helper import get_all_complaints, update_complaint_status
 
 st.set_page_config(page_title="Admin Dashboard · CivicAssist AI", page_icon="📊", layout="wide")
 

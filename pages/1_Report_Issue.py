@@ -1,12 +1,12 @@
 import os
-import streamlit as st
-import time
 import random
-import requests
+import time
+
 import folium
+import requests
+import streamlit as st
 from streamlit_folium import st_folium
-from datetime import datetime
-from PIL import Image
+
 from backend.db_helper import create_complaint
 
 API_BASE = os.environ.get(

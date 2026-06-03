@@ -1,0 +1,29 @@
+# Exclude virtual environments
+venv/
+.venv/
+env/
+
+# Exclude python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Exclude git directories and metadata
+.git/
+.gitignore
+.gitlab-ci.yml
+.pre-commit-config.yaml
+
+# Exclude local environment configs and databases
+.env
+*.db
+*.sqlite3
+generated_pdfs/
+backend/generated_pdfs/
+
+# Exclude tools/cache dirs
+.ruff_cache/
+.mypy_cache/
+.pytest_cache/
+tests/

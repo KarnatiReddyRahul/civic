@@ -1,11 +1,11 @@
+import uuid
+
 from backend.database import SessionLocal
 from backend.models import Complaint
 from backend.services.ai_classifier import classify
-from backend.services.router_service import route
 from backend.services.ai_generator import generate_letter
 from backend.services.pdf_service import create_pdf
-
-import uuid
+from backend.services.router_service import route
 
 
 def get_all_complaints():

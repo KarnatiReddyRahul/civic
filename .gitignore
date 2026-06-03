@@ -1,24 +1,26 @@
-# Python
+# Python Cache
 __pycache__/
 *.py[cod]
 *$py.class
+*.pyc
 
 # Virtual Environment
 venv/
+.venv/
+env/
 .env
 
-# VS Code
-.vscode/
-
-# Database
+# Database and Generated Files
 *.db
 *.sqlite3
-
-# Generated Files
 generated_pdfs/
 backend/generated_pdfs/
 
-# OS Files
+# IDEs
+.vscode/
+.idea/
+
+# OS files
 .DS_Store
 Thumbs.db
 
@@ -32,11 +34,9 @@ Thumbs.db
 dist/
 build/
 
-# Ruff Cache
+# Tools Cache
 .ruff_cache/
-
-# Pyright
-.pyright/
-
-# GitLeaks
-.gitleaks-report.json
+.mypy_cache/
+.pytest_cache/
+.gitleaks-report.json.coverage
+coverage.xml

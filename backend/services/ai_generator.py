@@ -1,5 +1,7 @@
 import os
+
 import requests
+
 
 def generate_letter(
     category,

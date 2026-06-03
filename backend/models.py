@@ -1,15 +1,12 @@
-from sqlalchemy import Column
-from sqlalchemy import Integer
-from sqlalchemy import String
-from sqlalchemy import Boolean
-from sqlalchemy import Float
-from sqlalchemy import DateTime
-
-from sqlalchemy.orm import declarative_base
-
 from datetime import datetime
 
-Base = declarative_base()
+from sqlalchemy import Boolean, Column, DateTime, Float, Integer, String
+from sqlalchemy.orm import DeclarativeBase
+
+
+class Base(DeclarativeBase):
+    pass
+
 
 class Complaint(Base):
 

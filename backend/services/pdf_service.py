@@ -1,8 +1,6 @@
 from pathlib import Path
-from reportlab.platypus import (
-    SimpleDocTemplate,
-    Paragraph
-)
+
+from reportlab.platypus import Paragraph, SimpleDocTemplate
 
 GENERATED_PDFS_DIR = Path(__file__).resolve().parent.parent / "generated_pdfs"
 GENERATED_PDFS_DIR.mkdir(parents=True, exist_ok=True)
