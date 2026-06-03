@@ -1,24 +1,49 @@
 repos:
-  - repo: https://github.com/astral-sh/ruff-pre-commit
+- repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.5.0
     hooks:
       - id: ruff
       - id: ruff-format
 
-  - repo: https://github.com/pre-commit/mirrors-mypy
+- repo: https://github.com/pre-commit/mirrors-mypy
     rev: v1.10.0
     hooks:
       - id: mypy
         additional_dependencies: [types-requests, types-Pillow]
         args: [--ignore-missing-imports]
 
-  - repo: https://github.com/gitleaks/gitleaks
+- repo: https://github.com/gitleaks/gitleaks
     rev: v8.18.2
     hooks:
       - id: gitleaks
 
-  - repo: https://github.com/pycqa/bandit
+- repo: https://github.com/pycqa/bandit
     rev: 1.7.9
     hooks:
       - id: bandit
         args: ["-r", "-lll", "backend/"]
+- repo: https://github.com/asottile/pyupgrade
+  rev: v3.19.1
+  hooks:
+    - id: pyupgrade
+
+- repo: https://github.com/PyCQA/flake8
+  rev: 7.1.1
+  hooks:
+    - id: flake8
+
+- repo: https://github.com/PyCQA/pylint
+  rev: v3.3.1
+  hooks:
+    - id: pylint
+
+- repo: https://github.com/jendrikseipp/vulture
+  rev: v2.14
+  hooks:
+    - id: vulture
+
+- repo: https://github.com/returntocorp/semgrep
+  rev: v1.129.0
+  hooks:
+    - id: semgrep
+      args: ["--config=auto"]
