@@ -1,30 +1,33 @@
 stages:
+  - format
   - lint
-  - static-analysis
+  - type_check
   - security
   - test
+  - coverage
 
 default:
   image: python:3.11-slim
+
   before_script:
-    - python3 -m venv venv
-    - source venv/bin/activate
+    - python -m venv venv
+    - . venv/bin/activate
     - pip install --upgrade pip
     - pip install -r requirements.txt
     - pip install ruff mypy pytest pytest-cov bandit pip-audit httpx
+
+ruff-format:
+  stage: format
+  script:
+    - ruff format --check .
 
 ruff-lint:
   stage: lint
   script:
     - ruff check .
 
-ruff-format:
-  stage: lint
-  script:
-    - ruff format --check .
-
 mypy-typecheck:
-  stage: static-analysis
+  stage: type_check
   script:
     - mypy backend --ignore-missing-imports
 
@@ -42,6 +45,11 @@ pytest-suite:
   stage: test
   script:
     - pytest
+
+coverage-report:
+  stage: coverage
+  script:
+    - pytest --cov=backend --cov-report=xml --cov-report=term
   coverage: '/TOTAL.*\s+(\d+)\%/'
   artifacts:
     reports:
