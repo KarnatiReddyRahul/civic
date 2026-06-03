@@ -269,24 +269,4 @@ else:
     </div>
     """, unsafe_allow_html=True)
 
-# ── How it works ───────────────────────────────────────────────────────────────
-st.markdown("<br>", unsafe_allow_html=True)
-st.markdown('<div style="font-size:1rem;font-weight:700;color:#1E293B;margin-bottom:.8rem;">⚙️ How CivicAssist AI Works</div>', unsafe_allow_html=True)
 
-steps = [
-    ("1","🗣️","Citizen Describes Issue","Plain language input — text or voice"),
-    ("2","🧠","AI Classifies","NLP detects category, priority, and relevant department"),
-    ("3","📝","Letter Generated","Formal, legally-framed complaint letter created instantly"),
-    ("4","📧","Auto-Dispatched","Email sent directly to concerned government department"),
-    ("5","🔔","Track Progress","Real-time status updates via SMS and portal"),
-]
-cols = st.columns(5)
-for col, (num, icon, title, desc) in zip(cols, steps):
-    col.markdown(f"""
-    <div class="ca-card" style="text-align:center;padding:1.2rem .8rem;">
-      <div style="font-size:1.6rem;margin-bottom:.4rem;">{icon}</div>
-      <div style="background:#EFF6FF;color:#1A56DB;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;font-size:.7rem;font-weight:700;margin:0 auto .5rem;">{num}</div>
-      <div style="font-weight:600;font-size:.85rem;margin-bottom:.25rem;">{title}</div>
-      <div style="font-size:.75rem;color:#64748B;">{desc}</div>
-    </div>
-    """, unsafe_allow_html=True)
