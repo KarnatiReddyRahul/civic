@@ -28,10 +28,10 @@ section[data-testid="stSidebar"] *{color:#CBD5E1!important;}
 .page-header{background:linear-gradient(135deg,var(--navy) 0%,#1e3a6e 100%);border-radius:14px;padding:2rem 2.5rem;color:#fff;margin-bottom:2rem;}
 .page-header h2{font-family:'Playfair Display',serif!important;font-size:1.8rem;margin:0 0 .4rem;color:#fff;}
 .page-header p{opacity:.8;margin:0;font-size:.95rem;}
-.letter-card{background:#FFFFFF;border:2px solid #1E293B;border-radius:0;padding:2.5rem 3rem;font-family:'Lora',serif!important;line-height:1.8;color:#1E293B;position:relative;box-shadow:4px 4px 0 rgba(10,22,40,.08);}
-.letter-card::before{content:'OFFICIAL COMPLAINT — GHMC';position:absolute;top:-1px;left:-1px;background:#0A1628;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.1em;padding:.25rem 1rem;text-transform:uppercase;}
+.letter-card{background:#FFFFFF;border:1px solid #D4C5A9;padding:2rem 2.5rem;font-family:'Lora',serif!important;line-height:1.9;color:#1E293B;position:relative;}
+.letter-card::before{content:'OFFICIAL';position:absolute;top:.8rem;right:1.2rem;font-size:.6rem;font-weight:700;letter-spacing:.12em;color:#94A3B8;opacity:.5;}
 .letter-watermark{display:none;}
-.stamp{display:inline-block;border:2px solid #DC2626;border-radius:2px;padding:.2rem .6rem;color:#DC2626;font-size:.7rem;font-weight:700;letter-spacing:.06em;font-family:'DM Sans',sans-serif!important;}
+.stamp{display:inline-block;border:2px solid #1A56DB;padding:.2rem .6rem;color:#1A56DB;font-size:.7rem;font-weight:700;letter-spacing:.06em;font-family:'DM Sans',sans-serif!important;}
 .meta-pill{display:inline-flex;align-items:center;gap:.4rem;background:#F1F5F9;border-radius:999px;padding:.3rem .9rem;font-size:.78rem;font-weight:500;color:#475569;}
 .dispatch-row{display:flex;align-items:center;gap:.6rem;padding:.6rem 0;border-bottom:1px solid #F1F5F9;}
 .stButton>button{border-radius:8px!important;font-weight:600!important;}
@@ -154,96 +154,32 @@ def get_dept_and_priority(text):
 
 def generate_letter(text, location, name, complaint_id, today):
     addressee, priority, category = get_dept_and_priority(text)
-    ref_no = f"CA/{complaint_id}/{datetime.now().strftime('%Y')}"
     return f"""
-══════════════════════════════════════════════════════════════════
-                  FORMAL COMPLAINT LETTER
-         Under Section 229 of GHMC Act, 1955 (Telangana)
-══════════════════════════════════════════════════════════════════
-
-Ref No: {ref_no}                                    Date: {today}
+Date: {today}
 
 From,
-**{name}**
-Registered Citizen — CivicAssist AI Portal
+{name}
 Hyderabad, Telangana
-Contact: Registered Mobile / Email on File
 
 To,
 {addressee}
 
-─────────────────────────────────────────────────────────────
-Subject: **FORMAL COMPLAINT REGARDING {category.upper()} AT {location.upper()} — URGENT ACTION REQUESTED**
-─────────────────────────────────────────────────────────────
+Subject: Complaint regarding {category} at {location}
 
 Respected Sir/Madam,
 
-**1. INTRODUCTION & PRELIMINARY SUBMISSION**
+I am writing to bring to your notice an issue concerning {category} at {location}.
 
-I, **{name}**, a resident of Hyderabad and a citizen of Telangana, hereby submit this formal complaint under the provisions of the Greater Hyderabad Municipal Corporation (GHMC) Act, 1955, and the Telangana Municipal Corporations Act, 1994. This complaint is submitted through the CivicAssist AI platform (Complaint ID: **{complaint_id}**) for your kind consideration and immediate action.
-
-**2. DETAILED DESCRIPTION OF THE ISSUE**
-
-The undersigned wishes to bring to your notice a pressing civic issue at the following location:
-
-| Particulars | Details |
-|-------------|---------|
-| **Location** | {location} |
-| **Issue Category** | {category} |
-| **Priority Level** | {priority} — Requiring Urgent Intervention |
-| **AI Classification Confidence** | High |
-| **Complaint Reference** | {complaint_id} |
-
-**Description of the Problem:**
 {text}
 
-**3. NATURE AND SEVERITY OF THE ISSUE**
+I request you to take necessary action at the earliest and provide a status update within 7 days.
 
-This problem has been persisting and has not been appropriately addressed despite being a matter of significant public concern. The situation:
-
-- Poses a direct risk to **public safety and health** of residents in the vicinity
-- Causes significant **inconvenience to daily commuters**, pedestrians, and local businesses
-- Particularly affects **senior citizens, children, and persons with disabilities**
-- Is in violation of the **GHMC (Maintenance and Management) Bye-laws, 2018**
-
-**4. ACTION REQUESTED**
-
-In light of the above, I humbly request your esteemed office to kindly:
-
-  a) **Depute an inspection team** at the earliest to assess the ground situation
-  b) **Initiate necessary remedial/repair works** on a top-priority basis
-  c) **Register the complaint** in the GHMC Grievance Redressal System
-  d) **Provide an acknowledgment** with a docket/ticket number for future reference
-  e) **Furnish a status update** to the undersigned within **7 working days** from the date of receipt of this complaint
-
-**5. DECLARATION**
-
-I hereby declare that the information furnished above is true and correct to the best of my knowledge and belief. I understand that furnishing false information may render this complaint liable for rejection under applicable law.
-
-**6. ENCLOSURES**
-
-1. Copies of photographs (if any) — Attached Separately
-2. Location Map / Geo-coordinates — Available on CivicAssist Platform
-3. Previous Complaints (if any) — As Referenced
-
-─────────────────────────────────────────────────────────────
-
-Thanking you in anticipation of your prompt and necessary action.
+Thanking you,
 
 Yours faithfully,
-
-
-**{name}**
-(Registered Citizen)
+{name}
 Complaint ID: {complaint_id}
-Date: {today}
-Place: Hyderabad
-
-══════════════════════════════════════════════════════════════════
-*CIVICASSIST AI — Telangana's AI-Powered Citizen Services Platform*
-*This is a system-generated complaint letter. Route to appropriate authority.*
-*GHMC Complaint Redressal | 24×7 Helpline: 040-2323 1122 | www.ghmc.gov.in*
-══════════════════════════════════════════════════════════════════
+Contact: Registered on CivicAssist AI Portal
 """
 
 # ── Main output ────────────────────────────────────────────────────────────────
