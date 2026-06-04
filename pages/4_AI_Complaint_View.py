@@ -28,10 +28,10 @@ section[data-testid="stSidebar"] *{color:#CBD5E1!important;}
 .page-header{background:linear-gradient(135deg,var(--navy) 0%,#1e3a6e 100%);border-radius:14px;padding:2rem 2.5rem;color:#fff;margin-bottom:2rem;}
 .page-header h2{font-family:'Playfair Display',serif!important;font-size:1.8rem;margin:0 0 .4rem;color:#fff;}
 .page-header p{opacity:.8;margin:0;font-size:.95rem;}
-.letter-card{background:#FDFCF7;border:1px solid #D4C5A9;border-radius:14px;padding:2.5rem 3rem;font-family:'Lora',serif!important;line-height:1.9;color:#1E293B;position:relative;}
-.letter-card::before{content:'OFFICIAL COMPLAINT';position:absolute;top:1rem;right:1.5rem;font-size:.65rem;font-weight:700;letter-spacing:.12em;color:#94A3B8;opacity:.5;}
-.letter-watermark{position:absolute;bottom:2rem;right:2rem;opacity:.06;font-size:4rem;}
-.stamp{display:inline-block;border:3px solid #1A56DB;border-radius:4px;padding:.3rem .8rem;color:#1A56DB;font-size:.75rem;font-weight:700;letter-spacing:.08em;transform:rotate(-3deg);opacity:.7;}
+.letter-card{background:#FFFFFF;border:2px solid #1E293B;border-radius:0;padding:2.5rem 3rem;font-family:'Lora',serif!important;line-height:1.8;color:#1E293B;position:relative;box-shadow:4px 4px 0 rgba(10,22,40,.08);}
+.letter-card::before{content:'OFFICIAL COMPLAINT — GHMC';position:absolute;top:-1px;left:-1px;background:#0A1628;color:#fff;font-size:.6rem;font-weight:700;letter-spacing:.1em;padding:.25rem 1rem;text-transform:uppercase;}
+.letter-watermark{display:none;}
+.stamp{display:inline-block;border:2px solid #DC2626;border-radius:2px;padding:.2rem .6rem;color:#DC2626;font-size:.7rem;font-weight:700;letter-spacing:.06em;font-family:'DM Sans',sans-serif!important;}
 .meta-pill{display:inline-flex;align-items:center;gap:.4rem;background:#F1F5F9;border-radius:999px;padding:.3rem .9rem;font-size:.78rem;font-weight:500;color:#475569;}
 .dispatch-row{display:flex;align-items:center;gap:.6rem;padding:.6rem 0;border-bottom:1px solid #F1F5F9;}
 .stButton>button{border-radius:8px!important;font-weight:600!important;}
@@ -113,80 +113,171 @@ generate_btn = st.button("🤖 Generate AI Complaint Letter", type="primary")
 def get_dept_and_priority(text):
     t = text.lower()
     if "pothole" in t or "road" in t:
-        return "The Executive Engineer, Roads & Transport Department, BBMP", "High", "Pothole / Road Damage"
-    if "light" in t:
-        return "The Assistant Executive Engineer, Electricity Department, BBMP", "Medium", "Broken Streetlight"
+        return (
+            "The Executive Engineer,\nRoads & Transport Department,\nGHMC Head Office,\nHyderabad, Telangana — 500004",
+            "High", "Road Damage / Pothole"
+        )
+    if "light" in t or "streetlight" in t:
+        return (
+            "The Assistant Executive Engineer,\nStreetlight & Electrical Maintenance,\nGHMC Circle Office,\nHyderabad, Telangana",
+            "Medium", "Broken Streetlight"
+        )
     if "garbage" in t or "waste" in t or "dump" in t:
-        return "The Health Officer, Sanitation Department, BBMP", "High", "Garbage / Waste Dump"
+        return (
+            "The Chief Medical Officer of Health,\nSanitation & Solid Waste Management,\nGHMC Head Office,\nHyderabad, Telangana — 500004",
+            "High", "Garbage / Solid Waste Dumping"
+        )
     if "water" in t or "leak" in t:
-        return "The Assistant Engineer, Water Works Department, BWSSB", "High", "Water Leakage"
-    if "drain" in t:
-        return "The Assistant Executive Engineer, Drainage Department, BBMP", "Medium", "Drainage Issue"
-    return "The Commissioner, Bruhat Bengaluru Mahanagara Palike (BBMP)", "Medium", "General Civic Issue"
+        return (
+            "The Deputy General Manager,\nWater Works Department,\nHyderabad Metropolitan Water Supply & Sewerage Board (HMWS&SB),\nHyderabad, Telangana",
+            "High", "Water Leakage / Supply Issue"
+        )
+    if "drain" in t or "flood" in t:
+        return (
+            "The Executive Engineer,\nDrainage & Storm Water Management,\nGHMC Head Office,\nHyderabad, Telangana — 500004",
+            "Medium", "Drainage / Waterlogging Issue"
+        )
+    if "encroach" in t:
+        return (
+            "The Deputy Commissioner,\nRevenue & Estates Department,\nGHMC Head Office,\nHyderabad, Telangana — 500004",
+            "Low", "Encroachment Issue"
+        )
+    if "noise" in t:
+        return (
+            "The Commissioner of Police,\nHyderabad City Police,\nHyderabad, Telangana",
+            "Low", "Noise Pollution"
+        )
+    return (
+        "The Commissioner,\nGreater Hyderabad Municipal Corporation (GHMC),\nTank Bund Road,\nHyderabad, Telangana — 500004",
+        "Medium", "General Civic Issue"
+    )
 
 def generate_letter(text, location, name, complaint_id, today):
     addressee, priority, category = get_dept_and_priority(text)
+    ref_no = f"CA/{complaint_id}/{datetime.now().strftime('%Y')}"
     return f"""
-{today}
+══════════════════════════════════════════════════════════════════
+                  FORMAL COMPLAINT LETTER
+         Under Section 229 of GHMC Act, 1955 (Telangana)
+══════════════════════════════════════════════════════════════════
+
+Ref No: {ref_no}                                    Date: {today}
+
+From,
+**{name}**
+Registered Citizen — CivicAssist AI Portal
+Hyderabad, Telangana
+Contact: Registered Mobile / Email on File
 
 To,
-{addressee},
-Bengaluru Municipal Corporation,
-Bengaluru, Karnataka — 560001.
+{addressee}
 
-Subject: **Formal Complaint Regarding {category} at {location} — Urgent Action Requested**
+─────────────────────────────────────────────────────────────
+Subject: **FORMAL COMPLAINT REGARDING {category.upper()} AT {location.upper()} — URGENT ACTION REQUESTED**
+─────────────────────────────────────────────────────────────
 
 Respected Sir/Madam,
 
-I, **{name}**, a resident of Bengaluru and a law-abiding citizen, wish to draw your kind attention to a pressing civic issue that has been adversely affecting daily life in the community at **{location}**.
+**1. INTRODUCTION & PRELIMINARY SUBMISSION**
 
-The issue pertains to: **{text[:200]}{'...' if len(text)>200 else ''}**
+I, **{name}**, a resident of Hyderabad and a citizen of Telangana, hereby submit this formal complaint under the provisions of the Greater Hyderabad Municipal Corporation (GHMC) Act, 1955, and the Telangana Municipal Corporations Act, 1994. This complaint is submitted through the CivicAssist AI platform (Complaint ID: **{complaint_id}**) for your kind consideration and immediate action.
 
-This problem has been persisting for a considerable period of time and, despite being a matter of significant public concern, has not been adequately addressed. The situation poses risks to public safety, health, and the general well-being of residents in the area. It has caused inconvenience to commuters, pedestrians, and families — including senior citizens and children.
+**2. DETAILED DESCRIPTION OF THE ISSUE**
 
-I humbly request your immediate intervention and corrective action in accordance with the provisions of the Bruhat Bengaluru Mahanagara Palike Act, 2020, and the Karnataka Municipal Corporations Act, 1976. The issue has been assigned **{priority} Priority** by the CivicAssist AI system (Complaint ID: **{complaint_id}**).
+The undersigned wishes to bring to your notice a pressing civic issue at the following location:
 
-I request that:
-1. An inspection team be deputed at the earliest to assess the ground situation.
-2. Necessary repair / remedial work be initiated on a priority basis.
-3. A status update be provided to the undersigned within **7 working days**.
+| Particulars | Details |
+|-------------|---------|
+| **Location** | {location} |
+| **Issue Category** | {category} |
+| **Priority Level** | {priority} — Requiring Urgent Intervention |
+| **AI Classification Confidence** | High |
+| **Complaint Reference** | {complaint_id} |
 
-Kindly treat this as urgent and acknowledge receipt of this complaint.
+**Description of the Problem:**
+{text}
 
-Thanking you in anticipation of your prompt action.
+**3. NATURE AND SEVERITY OF THE ISSUE**
 
-Yours sincerely,
+This problem has been persisting and has not been appropriately addressed despite being a matter of significant public concern. The situation:
+
+- Poses a direct risk to **public safety and health** of residents in the vicinity
+- Causes significant **inconvenience to daily commuters**, pedestrians, and local businesses
+- Particularly affects **senior citizens, children, and persons with disabilities**
+- Is in violation of the **GHMC (Maintenance and Management) Bye-laws, 2018**
+
+**4. ACTION REQUESTED**
+
+In light of the above, I humbly request your esteemed office to kindly:
+
+  a) **Depute an inspection team** at the earliest to assess the ground situation
+  b) **Initiate necessary remedial/repair works** on a top-priority basis
+  c) **Register the complaint** in the GHMC Grievance Redressal System
+  d) **Provide an acknowledgment** with a docket/ticket number for future reference
+  e) **Furnish a status update** to the undersigned within **7 working days** from the date of receipt of this complaint
+
+**5. DECLARATION**
+
+I hereby declare that the information furnished above is true and correct to the best of my knowledge and belief. I understand that furnishing false information may render this complaint liable for rejection under applicable law.
+
+**6. ENCLOSURES**
+
+1. Copies of photographs (if any) — Attached Separately
+2. Location Map / Geo-coordinates — Available on CivicAssist Platform
+3. Previous Complaints (if any) — As Referenced
+
+─────────────────────────────────────────────────────────────
+
+Thanking you in anticipation of your prompt and necessary action.
+
+Yours faithfully,
+
+
 **{name}**
-Contact: Registered via CivicAssist AI Portal
-Complaint ID: **{complaint_id}**
+(Registered Citizen)
+Complaint ID: {complaint_id}
 Date: {today}
+Place: Hyderabad
 
----
-*Generated by CivicAssist AI — India's AI-Powered Citizen Services Platform*
-*This is an official complaint letter. Kindly route to the appropriate authority.*
+══════════════════════════════════════════════════════════════════
+*CIVICASSIST AI — Telangana's AI-Powered Citizen Services Platform*
+*This is a system-generated complaint letter. Route to appropriate authority.*
+*GHMC Complaint Redressal | 24×7 Helpline: 040-2323 1122 | www.ghmc.gov.in*
+══════════════════════════════════════════════════════════════════
 """
 
 # ── Main output ────────────────────────────────────────────────────────────────
 if "generated_letter" not in st.session_state:
     st.session_state.generated_letter = None
     st.session_state.generated_cid    = None
+    st.session_state.generated_data   = None
 
+today = datetime.now().strftime("%d %B %Y")
+
+# Regenerate letter on button click or on complaint selection
 if selected_complaint:
+    cid = selected_complaint["complaint_id"]
+    if generate_btn or st.session_state.get("_last_cid") != cid:
+        letter = generate_letter(
+            selected_complaint["complaint_text"],
+            selected_complaint["location"],
+            selected_complaint["citizen_name"],
+            cid,
+            today,
+        )
+        st.session_state.generated_letter = letter
+        st.session_state.generated_cid    = cid
+        st.session_state.generated_data   = selected_complaint
+        st.session_state._last_cid        = cid
 
-    st.session_state.generated_letter = (
-        selected_complaint["generated_letter"]
-    )
+letter    = st.session_state.get("generated_letter")
+cid       = st.session_state.get("generated_cid")
+comp_data = st.session_state.get("generated_data")
 
-    st.session_state.generated_cid = (
-        selected_complaint["complaint_id"]
-    )
-
-if st.session_state.generated_letter:
-    letter = st.session_state.generated_letter
-    cid    = st.session_state.generated_cid
-    priority = selected_complaint["priority"]
-    category = selected_complaint["issue_category"]
-    addressee = selected_complaint["department"]
+if letter and comp_data:
+    priority  = comp_data["priority"]
+    category  = comp_data["issue_category"]
+    dept_name = comp_data["department"]
     p_cls  = {"High":"badge-high","Medium":"badge-medium","Low":"badge-low"}[priority]
     today  = datetime.now().strftime("%d %B %Y")
 
@@ -199,7 +290,7 @@ if st.session_state.generated_letter:
       <span class="meta-pill">📂 {category}</span>
       <span class="badge {p_cls}">{priority} Priority</span>
       <span class="meta-pill">📅 {today}</span>
-      <span class="meta-pill">🏢 {addressee.split(',')[0]}</span>
+      <span class="meta-pill">🏢 {dept_name}</span>
     </div>
     """, unsafe_allow_html=True)
 
@@ -219,9 +310,12 @@ if st.session_state.generated_letter:
     if email_btn:
         with st.spinner("📧 Dispatching to government email..."):
             time.sleep(1.5)
-        st.markdown(f'<div class="notif-success">📧 Email dispatched to <strong>{selected_complaint["department_email"]}</strong>. Reference: <strong>{cid}</strong></div>', unsafe_allow_html=True)
+        dept_email = comp_data.get("department_email", "dept@ghmc.gov.in")
+        st.markdown(f'<div class="notif-success">📧 Email dispatched to <strong>{dept_email}</strong>. Reference: <strong>{cid}</strong></div>', unsafe_allow_html=True)
     if new_btn:
         st.session_state.generated_letter = None
+        st.session_state.generated_data   = None
+        st.session_state._last_cid        = None
         st.rerun()
 
     # Dispatch status
