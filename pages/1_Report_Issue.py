@@ -6,8 +6,11 @@ import pandas as pd
 import requests
 import speech_recognition as sr
 from streamlit_mic_recorder import mic_recorder
-import static_ffmpeg
-static_ffmpeg.add_paths()
+try:
+    import static_ffmpeg
+    static_ffmpeg.add_paths()
+except Exception:
+    pass
 from pydub import AudioSegment
 import folium
 from streamlit_folium import st_folium
