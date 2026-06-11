@@ -6,9 +6,7 @@ import plotly.graph_objects as go
 import requests
 import streamlit as st
 
-from backend.db_helper import get_all_complaints_dict
-
-API_BASE = os.environ.get("API_BASE", "")
+API_BASE = os.environ.get("API_BASE", "http://localhost:8001")
 
 st.set_page_config(
     page_title="CivicAssist AI",
@@ -342,16 +340,12 @@ with st.sidebar:
 @st.cache_data(ttl=10)
 def fetch_complaints():
     try:
-        if API_BASE:
-            response = requests.get(f"{API_BASE}/api/complaints/", timeout=5)
-            if response.status_code != 200:
-                return pd.DataFrame()
-            complaints = response.json()
-        else:
-            complaints = get_all_complaints_dict()
+        response = requests.get(f"{API_BASE}/api/complaints/", timeout=5)
+        if response.status_code != 200:
+            return pd.DataFrame()
+        complaints = response.json()
 
         rows = []
-
         for c in complaints:
             created_at = c.get("created_at", "")
             submitted = str(created_at)[:10] if created_at else ""
@@ -512,6 +506,6 @@ st.markdown(f"""
 st.markdown("""
 <div class="ca-footer">
   🏛️ CivicAssist AI · Empowering Citizens, Improving Cities · Built for India's Digital Governance Future<br>
-  <span style="opacity:.6;">Data refreshed every 15 minutes · Powered by Anthropic Claude</span>
+  <span style="opacity:.6;">Data refreshed every 15 minutes · Powered by AI</span>
 </div>
 """, unsafe_allow_html=True)

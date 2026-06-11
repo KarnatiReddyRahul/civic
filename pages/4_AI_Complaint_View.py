@@ -1,15 +1,12 @@
 import os
-import time
 from datetime import datetime
 
 import requests
 import streamlit as st
 
-from backend.db_helper import get_all_complaints_dict
-
 API_BASE = os.environ.get(
     "API_BASE",
-    ""
+    "http://localhost:8001"
 )
 
 st.set_page_config(page_title="AI Complaint View · CivicAssist AI", page_icon="🤖", layout="wide")
@@ -59,19 +56,17 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Demo input or use a pre-loaded example ────────────────────────────────────
+# ── Load complaints from API ──────────────────────────────────────────────────
 @st.cache_data(ttl=10)
 def load_complaints():
 
     try:
-        if API_BASE:
-            response = requests.get(
-                f"{API_BASE}/api/complaints/"
-            )
-            if response.status_code == 200:
-                return response.json()
-            return []
-        return get_all_complaints_dict()
+        response = requests.get(
+            f"{API_BASE}/api/complaints/", timeout=5
+        )
+        if response.status_code == 200:
+            return response.json()
+        return []
 
     except Exception:
         return []
@@ -241,13 +236,30 @@ if letter and comp_data:
         st.markdown('<div class="notif-success">✅ Letter content copied to clipboard!</div>', unsafe_allow_html=True)
     if pdf_btn:
         with st.spinner("Generating PDF..."):
-            time.sleep(1)
-        st.markdown('<div class="notif-success">📄 PDF ready — <strong>civicassist_complaint_{}.pdf</strong> downloaded.</div>'.format(cid), unsafe_allow_html=True)
+            try:
+                resp = requests.get(f"{API_BASE}/api/complaints/{cid}/pdf", timeout=10)
+                if resp.ok:
+                    st.markdown(f'<div class="notif-success">📄 PDF ready — <a href="{API_BASE}/api/complaints/{cid}/pdf" target="_blank">Download complaint_{cid}.pdf</a></div>', unsafe_allow_html=True)
+                else:
+                    st.markdown('<div class="notif-error">❌ PDF not available. Submit the complaint first.</div>', unsafe_allow_html=True)
+            except Exception:
+                st.markdown('<div class="notif-error">❌ Cannot connect to backend.</div>', unsafe_allow_html=True)
     if email_btn:
         with st.spinner("📧 Dispatching to government email..."):
-            time.sleep(1.5)
-        dept_email = comp_data.get("department_email", "dept@ghmc.gov.in")
-        st.markdown(f'<div class="notif-success">📧 Email dispatched to <strong>{dept_email}</strong>. Reference: <strong>{cid}</strong></div>', unsafe_allow_html=True)
+            try:
+                resp = requests.post(f"{API_BASE}/api/complaints/{cid}/dispatch-email", timeout=15)
+                if resp.ok:
+                    result = resp.json()
+                    if result.get("success"):
+                        dept_email = comp_data.get("department_email", "dept@ghmc.gov.in")
+                        st.markdown(f'<div class="notif-success">📧 Email dispatched to <strong>{dept_email}</strong>. Reference: <strong>{cid}</strong></div>', unsafe_allow_html=True)
+                        st.cache_data.clear()
+                    else:
+                        st.markdown('<div class="notif-error">❌ Email dispatch failed. Check SMTP configuration.</div>', unsafe_allow_html=True)
+                else:
+                    st.markdown(f'<div class="notif-error">❌ Dispatch failed: {resp.text}</div>', unsafe_allow_html=True)
+            except Exception:
+                st.markdown('<div class="notif-error">❌ Cannot connect to backend.</div>', unsafe_allow_html=True)
     if new_btn:
         st.session_state.generated_letter = None
         st.session_state.generated_data   = None
@@ -255,7 +267,10 @@ if letter and comp_data:
         st.rerun()
 
     # Dispatch status
-    st.markdown("""
+    email_sent = comp_data.get("email_sent", False)
+    email_color = "#10B981" if email_sent else "#F59E0B"
+    email_label = "Email — Sent" if email_sent else "Email — Pending"
+    st.markdown(f"""
     <div class="ca-card" style="padding:.8rem 1.2rem;margin-top:.8rem;margin-bottom:1.2rem;">
       <div style="font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#64748B;margin-bottom:.6rem;">📡 Dispatch Status</div>
       <div style="display:flex;gap:1.5rem;flex-wrap:wrap;">
@@ -269,7 +284,7 @@ if letter and comp_data:
           <span style="color:#10B981;">●</span><span style="font-size:.82rem;">Letter Generated</span>
         </div>
         <div class="dispatch-row" style="border:none;padding:.2rem 0;gap:.4rem;">
-          <span style="color:#F59E0B;">●</span><span style="font-size:.82rem;">Email — Pending</span>
+          <span style="color:{email_color};">●</span><span style="font-size:.82rem;">{email_label}</span>
         </div>
       </div>
     </div>

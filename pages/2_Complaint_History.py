@@ -4,11 +4,9 @@ import pandas as pd
 import requests
 import streamlit as st
 
-from backend.db_helper import get_all_complaints_dict
-
 API_BASE = os.environ.get(
     "API_BASE",
-    ""
+    "http://localhost:8001"
 )
 
 st.set_page_config(page_title="Complaint History · CivicAssist AI", page_icon="📋", layout="wide")
@@ -49,15 +47,12 @@ with st.sidebar:
 def get_data():
 
     try:
-        if API_BASE:
-            response = requests.get(
-                f"{API_BASE}/api/complaints/"
-            )
-            if response.status_code != 200:
-                return pd.DataFrame()
-            complaints = response.json()
-        else:
-            complaints = get_all_complaints_dict()
+        response = requests.get(
+            f"{API_BASE}/api/complaints/", timeout=5
+        )
+        if response.status_code != 200:
+            return pd.DataFrame()
+        complaints = response.json()
 
         rows = []
 
@@ -110,10 +105,18 @@ def get_data():
 
         return pd.DataFrame(rows)
 
+    except requests.exceptions.ConnectionError:
+
+        st.error(
+            "Cannot connect to backend. Make sure FastAPI is running on port 8000."
+        )
+
+        return pd.DataFrame()
+
     except Exception as e:
 
         st.error(
-            f"Backend Connection Error: {e}"
+            f"Backend error: {e}"
         )
 
         return pd.DataFrame()

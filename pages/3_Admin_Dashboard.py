@@ -1,9 +1,14 @@
+import os
+
 import pandas as pd
+import folium
+from streamlit_folium import st_folium
 import plotly.express as px
 import plotly.graph_objects as go
+import requests
 import streamlit as st
 
-from backend.db_helper import get_all_complaints, update_complaint_status
+API_BASE = os.environ.get("API_BASE", "http://localhost:8001")
 
 st.set_page_config(page_title="Admin Dashboard · CivicAssist AI", page_icon="📊", layout="wide")
 
@@ -43,26 +48,33 @@ with st.sidebar:
     st.page_link("pages/3_Admin_Dashboard.py",      label="📊  Admin Dashboard")
     st.page_link("pages/4_AI_Complaint_View.py",    label="🤖  AI Complaint View")
 
-# ── Sample data / backend fetch ─────────────────────────────────────────────────
+# ── Data fetch ─────────────────────────────────────────────────────────────────
 @st.cache_data(ttl=5)
 def get_data():
-    complaints = get_all_complaints()
+    try:
+        response = requests.get(f"{API_BASE}/api/complaints/", timeout=5)
+        if response.status_code != 200:
+            return pd.DataFrame()
+        complaints = response.json()
+    except requests.exceptions.ConnectionError:
+        st.error("Cannot connect to backend. Make sure FastAPI is running on port 8000.")
+        return pd.DataFrame()
 
     rows = []
 
     for c in complaints:
 
         rows.append({
-            "Complaint ID": c.complaint_id,
-            "Category": c.issue_category,
-            "Department": c.department,
-            "Location": c.location,
-            "Priority": c.priority,
-            "Status": c.status,
-            "Date": pd.to_datetime(c.created_at),
-            "Submitted": str(c.created_at)[:10],
+            "Complaint ID": c.get("complaint_id"),
+            "Category": c.get("issue_category"),
+            "Department": c.get("department"),
+            "Location": c.get("location"),
+            "Priority": c.get("priority"),
+            "Status": c.get("status"),
+            "Date": pd.to_datetime(c.get("created_at")),
+            "Submitted": str(c.get("created_at", ""))[:10],
             "Resolve Days": None,
-            "Description": c.complaint_text
+            "Description": c.get("complaint_text")
         })
 
     return pd.DataFrame(rows)
@@ -159,26 +171,20 @@ new_status = st.selectbox(
 
 if st.button("✅ Update Status"):
 
-    complaint = update_complaint_status(
-        complaint_id,
-        new_status
-    )
-
-    if complaint:
-
-        st.success(
-            f"Complaint {complaint_id} updated successfully!"
+    try:
+        resp = requests.put(
+            f"{API_BASE}/api/complaints/{complaint_id}/status",
+            json={"status": new_status},
+            timeout=10,
         )
-
-        st.cache_data.clear()
-
-        st.rerun()
-
-    else:
-
-        st.error(
-            "Complaint not found"
-        )
+        if resp.ok:
+            st.success(f"Complaint {complaint_id} updated successfully!")
+            st.cache_data.clear()
+            st.rerun()
+        else:
+            st.error("Complaint not found")
+    except requests.exceptions.ConnectionError:
+        st.error("Cannot connect to backend. Make sure FastAPI is running on port 8000.")
 
 # ── Charts Row 1 ───────────────────────────────────────────────────────────────
 ch1, ch2 = st.columns([3,2])

@@ -18,5 +18,10 @@
     "department": "Water Works Department",
     "email": "water@demo.gov",
     "priority": "High"
+  },
+  "Drainage Issue": {
+    "department": "Drainage Department",
+    "email": "drainage@demo.gov",
+    "priority": "Medium"
   }
 }

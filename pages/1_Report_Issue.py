@@ -1,18 +1,20 @@
-import streamlit as st
-import time, random, os, re
 import json
+import os
+import random
 from datetime import datetime
-import pandas as pd
+
 import requests
 import speech_recognition as sr
+import streamlit as st
 from streamlit_mic_recorder import mic_recorder
+
 try:
     import static_ffmpeg
     static_ffmpeg.add_paths()
 except Exception:
     pass
-from pydub import AudioSegment
 import folium
+from pydub import AudioSegment
 from streamlit_folium import st_folium
 
 NOMINATIM_HEADERS = {"User-Agent": "CivicAssistAI/1.0"}
@@ -272,11 +274,13 @@ with col_form:
         st.success(f"📍 {st.session_state.get('detected_loc')[:70]}{'...' if len(st.session_state.get('detected_loc')) > 70 else ''}")
     location = st.session_state.get("detected_loc", "")
 
-    col_a, col_b = st.columns(2)
+    col_a, col_b, col_c = st.columns(3)
     with col_a:
         contact_name = st.text_input("Your Name", placeholder="Full Name")
     with col_b:
-        contact_phone = st.text_input("Phone / Email", placeholder="For status updates")
+        contact_phone = st.text_input("Phone", placeholder="e.g. 9876543210")
+    with col_c:
+        contact_email = st.text_input("Email", placeholder="e.g. you@email.com")
 
     st.markdown('</div>', unsafe_allow_html=True)
 
@@ -376,42 +380,65 @@ with col_preview:
         except Exception:
             pass
 
+API_BASE = os.environ.get("API_BASE", "http://localhost:8001")
+
 # ── Notifications ──────────────────────────────────────────────────────────────
 if submit_btn:
     if not location.strip():
         st.markdown('<div class="notif-error" style="margin-top:1rem;">⚠️ Please select your city and area before submitting.</div>', unsafe_allow_html=True)
+    elif not complaint_text.strip():
+        st.markdown('<div class="notif-error" style="margin-top:1rem;">⚠️ Please describe your issue before submitting.</div>', unsafe_allow_html=True)
     else:
         with st.spinner("🤖 AI is processing your complaint..."):
-            time.sleep(1.8)
-        category, dept, priority = detect_category(complaint_text)
-        cid = f"CA-2025-{random.randint(1100,9999)}"
-        p_badge = {"High":"🔴","Medium":"🟡","Low":"🟢"}[priority]
-        st.markdown(f"""
-        <div class="notif-success" style="margin-top:1rem;">
-          ✅ Complaint <strong>{cid}</strong> submitted successfully!<br><br>
-          📂 <strong>Category:</strong> {category}<br>
-          🏢 <strong>Routed to:</strong> {dept}<br>
-          {p_badge} <strong>Priority:</strong> {priority}
-        </div>
-        """, unsafe_allow_html=True)
-        st.balloons()
+            try:
+                resp = requests.post(
+                    f"{API_BASE}/api/complaints/",
+                    json={
+                        "citizen_name": contact_name or "Anonymous",
+                        "email": contact_email if contact_email and "@" in contact_email else "user@example.com",
+                        "phone": contact_phone if contact_phone else "0000000000",
+                        "complaint_text": complaint_text,
+                        "location": location,
+                        "latitude": st.session_state.get("map_lat"),
+                        "longitude": st.session_state.get("map_lon"),
+                    },
+                    timeout=30,
+                )
+                if resp.ok:
+                    data = resp.json()
+                    p_badge = {"High":"🔴","Medium":"🟡","Low":"🟢"}[data["priority"]]
+                    st.markdown(f"""
+                    <div class="notif-success" style="margin-top:1rem;">
+                      ✅ Complaint <strong>{data['complaint_id']}</strong> submitted successfully!<br><br>
+                      📂 <strong>Category:</strong> {data['category']}<br>
+                      🏢 <strong>Routed to:</strong> {data['department']}<br>
+                      {p_badge} <strong>Priority:</strong> {data['priority']}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.balloons()
+                else:
+                    st.markdown(f'<div class="notif-error" style="margin-top:1rem;">❌ Submission failed: {resp.text}</div>', unsafe_allow_html=True)
+            except requests.exceptions.ConnectionError:
+                st.markdown(f'<div class="notif-error" style="margin-top:1rem;">❌ Cannot connect to backend at {API_BASE}. Make sure FastAPI is running.</div>', unsafe_allow_html=True)
 
 if pdf_btn:
-    with st.spinner("📄 Generating formal complaint PDF..."):
-        time.sleep(1.2)
-    st.markdown('<div class="notif-success" style="margin-top:1rem;">📄 PDF generated successfully! Check <a href="#">AI Complaint View</a> to download.</div>', unsafe_allow_html=True)
+    if not complaint_text.strip():
+        st.markdown('<div class="notif-error" style="margin-top:1rem;">⚠️ Enter a complaint first before generating PDF.</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="notif-success" style="margin-top:1rem;">📄 Please submit the complaint first, then download the PDF from <strong>AI Complaint View</strong> page.</div>', unsafe_allow_html=True)
 
 if email_btn:
-    with st.spinner("📧 Dispatching email to department..."):
-        time.sleep(1)
-    st.markdown('<div class="notif-success" style="margin-top:1rem;">📧 Email dispatched to <strong>roads@bbmp.gov.in</strong> successfully!</div>', unsafe_allow_html=True)
+    if not complaint_text.strip():
+        st.markdown('<div class="notif-error" style="margin-top:1rem;">⚠️ Enter a complaint first before sending email.</div>', unsafe_allow_html=True)
+    else:
+        st.markdown('<div class="notif-success" style="margin-top:1rem;">📧 Please submit the complaint first, then dispatch email from <strong>AI Complaint View</strong> page.</div>', unsafe_allow_html=True)
 
 # Load department data for chatbot context
 def load_dept_data():
     try:
         with open("backend/data/departments.json", "r") as f:
             return json.load(f)
-    except:
+    except Exception:
         return {}
 
 def _has_telugu(text):
@@ -516,7 +543,7 @@ with vcol1:
             if text.strip():
                 st.session_state._pending_chat_voice = text
                 st.rerun()
-        except:
+        except Exception:
             pass
 
 with vcol2:

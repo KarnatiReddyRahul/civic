@@ -1,7 +1,8 @@
-from database import get_db
 from fastapi import APIRouter, Depends
-from models import Complaint
 from sqlalchemy.orm import Session
+
+from backend.database import get_db
+from backend.models import Complaint
 
 router = APIRouter()
 

@@ -12,9 +12,9 @@ with open(
     DEPTS = json.load(f)
 
 
-def route(category):
+def route(category, priority_override=None):
 
-    return DEPTS.get(
+    info = DEPTS.get(
         category,
         {
             "department": "Municipal Corporation",
@@ -22,3 +22,6 @@ def route(category):
             "priority": "Medium"
         }
     )
+    if priority_override:
+        info = {**info, "priority": priority_override}
+    return info

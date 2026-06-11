@@ -85,13 +85,13 @@ def test_complaints_empty():
 
 def test_get_nonexistent_complaint():
     response = client.get("/api/complaints/nonexistent")
-    assert response.status_code == 200
-    assert response.json() == {"message": "Complaint not found"}
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Complaint not found"}
 
 def test_update_status_nonexistent_complaint():
     response = client.put("/api/complaints/nonexistent/status", json={"status": "Resolved"})
-    assert response.status_code == 200
-    assert response.json() == {"message": "Complaint not found"}
+    assert response.status_code == 404
+    assert response.json() == {"detail": "Complaint not found"}
 
 def test_submit_complaint():
     payload = {
@@ -107,7 +107,7 @@ def test_submit_complaint():
     # Determine the actual import path used by fastapi for complaints router
     router_module = "routers.complaints" if "routers.complaints" in sys.modules else "backend.routers.complaints"
     
-    with patch(f"{router_module}.classify", return_value="Pothole") as mock_classify, \
+    with patch(f"{router_module}.classify", return_value=("Pothole", "High")) as mock_classify, \
          patch(f"{router_module}.route", return_value={"department": "Road Operations Department", "email": "roads@example.com", "priority": "High"}) as mock_route, \
          patch(f"{router_module}.generate_letter", return_value="Mocked Letter Content") as mock_generate, \
          patch(f"{router_module}.create_pdf", return_value="/mock/path/complaint.pdf"):
@@ -123,8 +123,8 @@ def test_submit_complaint():
         assert res_data["generated_letter"] == "Mocked Letter Content"
         
         # Verify mock calls
-        mock_classify.assert_called_once_with(payload["complaint_text"])
-        mock_route.assert_called_once_with("Pothole")
+        mock_classify.assert_called_once_with(payload["complaint_text"], payload["location"])
+        mock_route.assert_called_once_with("Pothole", "High")
         mock_generate.assert_called_once_with("Pothole", payload["location"], payload["complaint_text"])
         
         # Verify it was added to database

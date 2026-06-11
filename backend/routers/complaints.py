@@ -1,27 +1,36 @@
 import uuid
+from pathlib import Path
 
-from database import get_db
-from fastapi import APIRouter, Body, Depends
-from models import Complaint
-from schemas import ComplaintCreate
-from services.ai_classifier import classify
-from services.ai_generator import generate_letter
-from services.pdf_service import create_pdf
-from services.router_service import route
+from fastapi import APIRouter, Body, Depends, HTTPException
+from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
+from backend.database import get_db
+from backend.models import Complaint
+from backend.schemas import ComplaintCreate
+from backend.services.ai_classifier import classify
+from backend.services.ai_generator import generate_letter
+from backend.services.email_service import send_email
+from backend.services.pdf_service import create_pdf
+from backend.services.router_service import route
+
 router = APIRouter()
+
+GENERATED_PDFS_DIR = Path(__file__).resolve().parent.parent / "generated_pdfs"
+
+
 @router.post("/")
 def submit_complaint(
     payload: ComplaintCreate,
     db: Session = Depends(get_db)
 ):
 
-    category = classify(
-        payload.complaint_text
+    category, priority = classify(
+        payload.complaint_text,
+        payload.location
     )
 
-    routing = route(category)
+    routing = route(category, priority)
 
     complaint_id = str(
         uuid.uuid4()
@@ -159,10 +168,7 @@ def get_complaint_by_id(
     ).first()
 
     if not complaint:
-
-        return {
-            "message": "Complaint not found"
-        }
+        raise HTTPException(status_code=404, detail="Complaint not found")
 
     return {
 
@@ -217,9 +223,7 @@ def update_complaint_status(
     ).first()
 
     if not complaint:
-        return {
-            "message": "Complaint not found"
-        }
+        raise HTTPException(status_code=404, detail="Complaint not found")
 
     complaint.status = payload.get(
         "status",
@@ -234,4 +238,71 @@ def update_complaint_status(
         "message": "Status updated successfully",
         "complaint_id": complaint.complaint_id,
         "new_status": complaint.status
+    }
+
+
+@router.get("/{complaint_id}/pdf")
+def download_pdf(
+    complaint_id: str,
+    db: Session = Depends(get_db),
+):
+    complaint = db.query(Complaint).filter(
+        Complaint.complaint_id == complaint_id
+    ).first()
+
+    if not complaint or not complaint.pdf_path:
+        raise HTTPException(status_code=404, detail="PDF not found")
+
+    pdf_file = Path(complaint.pdf_path)
+    if not pdf_file.exists():
+        raise HTTPException(status_code=404, detail="PDF file not found on disk")
+
+    return FileResponse(
+        str(pdf_file),
+        media_type="application/pdf",
+        filename=f"complaint_{complaint_id}.pdf",
+    )
+
+
+@router.post("/{complaint_id}/dispatch-email")
+def dispatch_email(
+    complaint_id: str,
+    db: Session = Depends(get_db),
+):
+    complaint = db.query(Complaint).filter(
+        Complaint.complaint_id == complaint_id
+    ).first()
+
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+
+    subject = f"CivicAssist: Complaint {complaint_id} - {complaint.issue_category}"
+    body = f"""
+    <h2>Civic Complaint: {complaint.issue_category}</h2>
+    <p><strong>Complaint ID:</strong> {complaint_id}</p>
+    <p><strong>Citizen:</strong> {complaint.citizen_name}</p>
+    <p><strong>Location:</strong> {complaint.location}</p>
+    <p><strong>Priority:</strong> {complaint.priority}</p>
+    <hr>
+    <p>{complaint.complaint_text}</p>
+    <hr>
+    <p><strong>Generated Letter:</strong></p>
+    <p>{complaint.generated_letter}</p>
+    """
+
+    success = send_email(
+        receiver=complaint.department_email,
+        subject=subject,
+        body=body,
+        pdf_path=complaint.pdf_path,
+    )
+
+    if success:
+        complaint.email_sent = True
+        db.commit()
+
+    return {
+        "message": "Email dispatched" if success else "Email dispatch failed",
+        "complaint_id": complaint_id,
+        "success": success,
     }

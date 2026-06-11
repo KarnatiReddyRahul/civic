@@ -1,7 +1,9 @@
-from database import engine
 from fastapi import FastAPI
-from models import Base
-from routers import admin, complaints, dashboard
+from fastapi.middleware.cors import CORSMiddleware
+
+from backend.database import engine
+from backend.models import Base
+from backend.routers import admin, complaints, dashboard
 
 Base.metadata.create_all(
     bind=engine
@@ -9,6 +11,14 @@ Base.metadata.create_all(
 
 app = FastAPI(
     title="CivicAssist AI"
+)
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(
