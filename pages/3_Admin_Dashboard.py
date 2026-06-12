@@ -1,14 +1,11 @@
-import os
-
 import pandas as pd
 import folium
 from streamlit_folium import st_folium
 import plotly.express as px
 import plotly.graph_objects as go
-import requests
 import streamlit as st
 
-API_BASE = os.environ.get("API_BASE", "http://localhost:8001")
+from backend.db_utils import get_all_complaints, update_complaint_status, get_dashboard_stats
 
 st.set_page_config(page_title="Admin Dashboard · CivicAssist AI", page_icon="📊", layout="wide")
 
@@ -51,19 +48,10 @@ with st.sidebar:
 # ── Data fetch ─────────────────────────────────────────────────────────────────
 @st.cache_data(ttl=5)
 def get_data():
-    try:
-        response = requests.get(f"{API_BASE}/api/complaints/", timeout=5)
-        if response.status_code != 200:
-            return pd.DataFrame()
-        complaints = response.json()
-    except requests.exceptions.ConnectionError:
-        st.error("Cannot connect to backend. Make sure FastAPI is running on port 8000.")
-        return pd.DataFrame()
-
+    complaints = get_all_complaints()
     rows = []
 
     for c in complaints:
-
         rows.append({
             "Complaint ID": c.get("complaint_id"),
             "Category": c.get("issue_category"),
@@ -172,19 +160,15 @@ new_status = st.selectbox(
 if st.button("✅ Update Status"):
 
     try:
-        resp = requests.put(
-            f"{API_BASE}/api/complaints/{complaint_id}/status",
-            json={"status": new_status},
-            timeout=10,
-        )
-        if resp.ok:
+        result = update_complaint_status(complaint_id, new_status)
+        if result:
             st.success(f"Complaint {complaint_id} updated successfully!")
             st.cache_data.clear()
             st.rerun()
         else:
             st.error("Complaint not found")
-    except requests.exceptions.ConnectionError:
-        st.error("Cannot connect to backend. Make sure FastAPI is running on port 8000.")
+    except Exception as e:
+        st.error(f"Update failed: {e}")
 
 # ── Charts Row 1 ───────────────────────────────────────────────────────────────
 ch1, ch2 = st.columns([3,2])

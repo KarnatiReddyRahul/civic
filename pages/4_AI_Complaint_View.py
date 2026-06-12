@@ -1,13 +1,9 @@
-import os
 from datetime import datetime
 
-import requests
 import streamlit as st
 
-API_BASE = os.environ.get(
-    "API_BASE",
-    "http://localhost:8001"
-)
+from backend.db_utils import get_all_complaints, get_complaint_by_id, dispatch_email
+from backend.services.pdf_service import GENERATED_PDFS_DIR
 
 st.set_page_config(page_title="AI Complaint View · CivicAssist AI", page_icon="🤖", layout="wide")
 
@@ -56,18 +52,12 @@ st.markdown("""
 </div>
 """, unsafe_allow_html=True)
 
-# ── Load complaints from API ──────────────────────────────────────────────────
+# ── Load complaints from DB ──────────────────────────────────────────────────
 @st.cache_data(ttl=10)
 def load_complaints():
 
     try:
-        response = requests.get(
-            f"{API_BASE}/api/complaints/", timeout=5
-        )
-        if response.status_code == 200:
-            return response.json()
-        return []
-
+        return get_all_complaints()
     except Exception:
         return []
 
@@ -236,30 +226,30 @@ if letter and comp_data:
         st.markdown('<div class="notif-success">✅ Letter content copied to clipboard!</div>', unsafe_allow_html=True)
     if pdf_btn:
         with st.spinner("Generating PDF..."):
-            try:
-                resp = requests.get(f"{API_BASE}/api/complaints/{cid}/pdf", timeout=10)
-                if resp.ok:
-                    st.markdown(f'<div class="notif-success">📄 PDF ready — <a href="{API_BASE}/api/complaints/{cid}/pdf" target="_blank">Download complaint_{cid}.pdf</a></div>', unsafe_allow_html=True)
-                else:
-                    st.markdown('<div class="notif-error">❌ PDF not available. Submit the complaint first.</div>', unsafe_allow_html=True)
-            except Exception:
-                st.markdown('<div class="notif-error">❌ Cannot connect to backend.</div>', unsafe_allow_html=True)
+            pdf_file = GENERATED_PDFS_DIR / f"{cid}.pdf"
+            if pdf_file.exists():
+                with open(pdf_file, "rb") as f:
+                    st.download_button(
+                        label="📄 Click to Download PDF",
+                        data=f,
+                        file_name=f"complaint_{cid}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True,
+                    )
+            else:
+                st.markdown('<div class="notif-error">❌ PDF not available. Submit the complaint first.</div>', unsafe_allow_html=True)
     if email_btn:
         with st.spinner("📧 Dispatching to government email..."):
             try:
-                resp = requests.post(f"{API_BASE}/api/complaints/{cid}/dispatch-email", timeout=15)
-                if resp.ok:
-                    result = resp.json()
-                    if result.get("success"):
-                        dept_email = comp_data.get("department_email", "dept@ghmc.gov.in")
-                        st.markdown(f'<div class="notif-success">📧 Email dispatched to <strong>{dept_email}</strong>. Reference: <strong>{cid}</strong></div>', unsafe_allow_html=True)
-                        st.cache_data.clear()
-                    else:
-                        st.markdown('<div class="notif-error">❌ Email dispatch failed. Check SMTP configuration.</div>', unsafe_allow_html=True)
+                result = dispatch_email(cid)
+                if result.get("success"):
+                    dept_email = comp_data.get("department_email", "dept@ghmc.gov.in")
+                    st.markdown(f'<div class="notif-success">📧 Email dispatched to <strong>{dept_email}</strong>. Reference: <strong>{cid}</strong></div>', unsafe_allow_html=True)
+                    st.cache_data.clear()
                 else:
-                    st.markdown(f'<div class="notif-error">❌ Dispatch failed: {resp.text}</div>', unsafe_allow_html=True)
-            except Exception:
-                st.markdown('<div class="notif-error">❌ Cannot connect to backend.</div>', unsafe_allow_html=True)
+                    st.markdown('<div class="notif-error">❌ Email dispatch failed. Check SMTP configuration.</div>', unsafe_allow_html=True)
+            except Exception as e:
+                st.markdown(f'<div class="notif-error">❌ Dispatch failed: {e}</div>', unsafe_allow_html=True)
     if new_btn:
         st.session_state.generated_letter = None
         st.session_state.generated_data   = None

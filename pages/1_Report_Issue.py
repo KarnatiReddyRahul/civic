@@ -3,10 +3,11 @@ import os
 import random
 from datetime import datetime
 
-import requests
 import speech_recognition as sr
 import streamlit as st
 from streamlit_mic_recorder import mic_recorder
+
+from backend.db_utils import submit_complaint
 
 try:
     import static_ffmpeg
@@ -380,8 +381,6 @@ with col_preview:
         except Exception:
             pass
 
-API_BASE = os.environ.get("API_BASE", "http://localhost:8001")
-
 # ── Notifications ──────────────────────────────────────────────────────────────
 if submit_btn:
     if not location.strip():
@@ -391,35 +390,27 @@ if submit_btn:
     else:
         with st.spinner("🤖 AI is processing your complaint..."):
             try:
-                resp = requests.post(
-                    f"{API_BASE}/api/complaints/",
-                    json={
-                        "citizen_name": contact_name or "Anonymous",
-                        "email": contact_email if contact_email and "@" in contact_email else "user@example.com",
-                        "phone": contact_phone if contact_phone else "0000000000",
-                        "complaint_text": complaint_text,
-                        "location": location,
-                        "latitude": st.session_state.get("map_lat"),
-                        "longitude": st.session_state.get("map_lon"),
-                    },
-                    timeout=30,
+                data = submit_complaint(
+                    citizen_name=contact_name or "Anonymous",
+                    email=contact_email if contact_email and "@" in contact_email else "user@example.com",
+                    phone=contact_phone if contact_phone else "0000000000",
+                    complaint_text=complaint_text,
+                    location=location,
+                    latitude=st.session_state.get("map_lat"),
+                    longitude=st.session_state.get("map_lon"),
                 )
-                if resp.ok:
-                    data = resp.json()
-                    p_badge = {"High":"🔴","Medium":"🟡","Low":"🟢"}[data["priority"]]
-                    st.markdown(f"""
-                    <div class="notif-success" style="margin-top:1rem;">
-                      ✅ Complaint <strong>{data['complaint_id']}</strong> submitted successfully!<br><br>
-                      📂 <strong>Category:</strong> {data['category']}<br>
-                      🏢 <strong>Routed to:</strong> {data['department']}<br>
-                      {p_badge} <strong>Priority:</strong> {data['priority']}
-                    </div>
-                    """, unsafe_allow_html=True)
-                    st.balloons()
-                else:
-                    st.markdown(f'<div class="notif-error" style="margin-top:1rem;">❌ Submission failed: {resp.text}</div>', unsafe_allow_html=True)
-            except requests.exceptions.ConnectionError:
-                st.markdown(f'<div class="notif-error" style="margin-top:1rem;">❌ Cannot connect to backend at {API_BASE}. Make sure FastAPI is running.</div>', unsafe_allow_html=True)
+                p_badge = {"High":"🔴","Medium":"🟡","Low":"🟢"}[data["priority"]]
+                st.markdown(f"""
+                <div class="notif-success" style="margin-top:1rem;">
+                  ✅ Complaint <strong>{data['complaint_id']}</strong> submitted successfully!<br><br>
+                  📂 <strong>Category:</strong> {data['category']}<br>
+                  🏢 <strong>Routed to:</strong> {data['department']}<br>
+                  {p_badge} <strong>Priority:</strong> {data['priority']}
+                </div>
+                """, unsafe_allow_html=True)
+                st.balloons()
+            except Exception as e:
+                st.markdown(f'<div class="notif-error" style="margin-top:1rem;">❌ Submission failed: {e}</div>', unsafe_allow_html=True)
 
 if pdf_btn:
     if not complaint_text.strip():

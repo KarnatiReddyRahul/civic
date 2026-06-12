@@ -1,12 +1,9 @@
-import os
-
 import pandas as pd
 import plotly.express as px
 import plotly.graph_objects as go
-import requests
 import streamlit as st
 
-API_BASE = os.environ.get("API_BASE", "http://localhost:8001")
+from backend.db_utils import get_all_complaints
 
 st.set_page_config(
     page_title="CivicAssist AI",
@@ -340,10 +337,7 @@ with st.sidebar:
 @st.cache_data(ttl=10)
 def fetch_complaints():
     try:
-        response = requests.get(f"{API_BASE}/api/complaints/", timeout=5)
-        if response.status_code != 200:
-            return pd.DataFrame()
-        complaints = response.json()
+        complaints = get_all_complaints()
 
         rows = []
         for c in complaints:
